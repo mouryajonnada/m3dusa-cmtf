@@ -149,6 +149,27 @@ Outputs are automatically saved to:
 
 ---
 
+## ⚡ Training on Kaggle (Free GPU)
+
+You can train both models directly on Kaggle with a free T4 or P100 GPU using [`notebooks/kaggle_train.ipynb`](file:///c:/Users/jmmou/OneDrive/Desktop/Project/notebooks/kaggle_train.ipynb):
+
+1. Go to [kaggle.com/code](https://www.kaggle.com/code) and click **New Notebook**.
+2. Under **Notebook Settings** (right panel):
+   - Set **Accelerator** to **GPU T4 x2** or **GPU P100**.
+   - Turn **Internet** **ON**.
+3. In the first cell, clone the repository and run the automated pipeline:
+   ```bash
+   !git clone https://github.com/mouryajonnada/m3dusa-cmtf.git
+   %cd m3dusa-cmtf
+   !pip install -q torch-geometric transformers sentence-transformers
+   !python scripts/train.py --config experiments/baseline_m3dusa.yaml --device cuda
+   !python scripts/train.py --config experiments/cross_modal_fusion.yaml --device cuda
+   !python scripts/generate_results.py
+   ```
+4. Download the trained checkpoints and metric charts directly from Kaggle output (`m3dusa_cmtf_trained_models.zip`).
+
+---
+
 ## Config System
 
 Configs are YAML files loaded into dot-accessible `DotDict` objects:
