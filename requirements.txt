@@ -1,0 +1,46 @@
+# =============================================================================
+# Fake News Detection — Python Dependencies  (CPU-only, torch 2.14.0)
+# =============================================================================
+#
+# SETUP ORDER (2 steps):
+#
+# Step 1 — Install PyTorch (CPU-only build):
+#
+#   pip install torch==2.14.0 torchvision torchaudio \
+#       --index-url https://download.pytorch.org/whl/cpu
+#
+#   Already installed? Skip this step — torch 2.14.0+cpu is confirmed.
+#
+# Step 2 — Install PyG CPU-compatible extra dependencies:
+#
+#   pip install torch-scatter torch-sparse torch-cluster torch-spline-conv \
+#       -f https://data.pyg.org/whl/torch-2.14.0+cpu.html
+#
+#   Note: pyg-lib does not ship CPU wheels — it is safe to omit it.
+#   Full wheel list: https://data.pyg.org/whl/
+#
+# Step 3 — Install the rest of the dependencies:
+#
+#   pip install -r requirements.txt
+#
+# =============================================================================
+
+# --- Graph Neural Networks ---
+torch-geometric>=2.5.0
+
+# --- NLP / Transformers ---
+transformers>=4.40.0
+sentence-transformers>=3.0.0
+
+# --- Data & Classical ML ---
+scikit-learn>=1.4.0
+pandas>=2.0.0
+numpy>=1.26.0
+
+# --- Visualization ---
+matplotlib>=3.8.0
+seaborn>=0.13.0
+
+# --- Utilities ---
+tqdm>=4.66.0
+pyyaml>=6.0.1

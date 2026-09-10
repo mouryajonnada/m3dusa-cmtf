@@ -1,0 +1,59 @@
+# =============================================================================
+# Experiment: M3DUSA Baseline Reproduction
+# Reference: Martirano et al. 2025 — https://github.com/lilymart/M3DUSA
+# =============================================================================
+
+experiment:
+  name: baseline_m3dusa
+  description: "Reproduction of the M3DUSA late-fusion baseline on PolitiFact"
+  seed: 42
+  fusion_method: late_fusion        # "late_fusion" | "cross_modal"
+
+data:
+  dataset: politifact
+  raw_dir: data/raw
+  processed_dir: data/processed
+  splits: [0.60, 0.15, 0.25]         # train / val / test fractions
+  max_text_length: 512
+  graph:
+    edge_features: false
+
+model:
+  text_encoder: roberta-base         # HuggingFace model identifier
+  freeze_text_encoder: false
+  text_pooling: cls                  # "cls" | "mean"
+  gat:
+    num_layers: 2
+    num_heads: 4
+    hidden_dim: 256
+    dropout: 0.3
+    residual: true
+  fusion:
+    method: late_fusion              # "late_fusion" | "cross_modal"
+    hidden_dim: 256                  # output dim → classifier input
+    dropout: 0.1
+    # cross_modal-only params (ignored for late_fusion)
+    num_layers: 2
+    num_heads: 4
+    feedforward_dim: 512
+    bidirectional: true
+  classifier:
+    hidden_dims: [128]
+    dropout: 0.3
+    activation: relu
+
+training:
+  epochs: 50
+  batch_size: 32
+  lr: 2.0e-5
+  head_lr_scale: 10                  # head LR = lr * head_lr_scale
+  weight_decay: 1.0e-4
+  scheduler: cosine
+  warmup_steps: 100
+  grad_clip: 1.0
+  early_stopping_patience: 7
+
+results:
+  output_dir: results/
+  save_best_model: true
+  log_every_n_steps: 10

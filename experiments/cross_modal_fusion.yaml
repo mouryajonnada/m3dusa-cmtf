@@ -1,0 +1,58 @@
+# =============================================================================
+# Experiment: Cross-Modal Transformer Fusion (Novel Method)
+# Extends M3DUSA by replacing late-fusion with a cross-attention fusion module
+# =============================================================================
+
+experiment:
+  name: cross_modal_fusion
+  description: "Cross-Modal Transformer Fusion replacing M3DUSA late-fusion baselines"
+  seed: 42
+  fusion_method: cross_modal         # "late_fusion" | "cross_modal"
+
+data:
+  dataset: politifact
+  raw_dir: data/raw
+  processed_dir: data/processed
+  splits: [0.60, 0.15, 0.25]         # train / val / test fractions
+  max_text_length: 512
+  graph:
+    edge_features: false
+
+model:
+  text_encoder: roberta-base
+  freeze_text_encoder: false
+  text_pooling: cls                  # "cls" | "mean"
+  gat:
+    num_layers: 2
+    num_heads: 4
+    hidden_dim: 256
+    dropout: 0.3
+    residual: true
+  fusion:
+    method: cross_modal              # "late_fusion" | "cross_modal"
+    num_heads: 8                     # multi-head cross-attention heads
+    num_layers: 2                    # stacked cross-attention layers
+    hidden_dim: 256                  # fusion & output dimension
+    dropout: 0.1
+    feedforward_dim: 512             # FFN intermediate dimension
+    bidirectional: true              # run both text→graph and graph→text
+  classifier:
+    hidden_dims: [128]
+    dropout: 0.3
+    activation: relu
+
+training:
+  epochs: 50
+  batch_size: 32
+  lr: 2.0e-5
+  head_lr_scale: 10
+  weight_decay: 1.0e-4
+  scheduler: cosine
+  warmup_steps: 100
+  grad_clip: 1.0
+  early_stopping_patience: 7
+
+results:
+  output_dir: results/
+  save_best_model: true
+  log_every_n_steps: 10
