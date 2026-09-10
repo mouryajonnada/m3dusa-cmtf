@@ -26,15 +26,16 @@ ENV/
 # =============================================================================
 # Jupyter Notebooks
 # =============================================================================
-.ipynb_checkpoints/
 *.ipynb
+!notebooks/kaggle_train.ipynb
 
 # =============================================================================
-# Data (raw data is large and should not be version-controlled)
+# Data
 # =============================================================================
 data/raw/*
-data/processed/*
+!data/raw/*.csv
 !data/raw/.gitkeep
+data/processed/*
 !data/processed/.gitkeep
 
 # =============================================================================

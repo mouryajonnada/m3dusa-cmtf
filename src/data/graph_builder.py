@@ -154,6 +154,17 @@ def extract_hashtags(text: str) -> list[str]:
         if w not in _STOPWORDS:
             implicit[w] = None
 
+    if implicit:
+        return list(implicit)
+
+    # 3. Casual/lowercase fallback: if no explicit tags, acronyms, or TitleCase
+    # words exist, treat non-stopword tokens (>= 3 chars) as entity keywords.
+    words = re.findall(r"\b[a-zA-Z]{3,}\b", text)
+    for word in words:
+        w = word.lower()
+        if w not in _STOPWORDS:
+            implicit[w] = None
+
     return list(implicit)
 
 

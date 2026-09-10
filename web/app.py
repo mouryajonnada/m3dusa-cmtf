@@ -175,8 +175,8 @@ def predict(req: PredictRequest):
     with torch.no_grad():
         for name, model in MODELS.items():
             logits = model(batch)
-            probs = F.softmax(logits, dim=-1)[0].tolist()  # [fake_prob, real_prob]
-            prob_fake, prob_real = float(probs[0]), float(probs[1])
+            probs = F.softmax(logits, dim=-1)[0].tolist()  # [real_prob, fake_prob] (LABEL_REAL=0, LABEL_FAKE=1)
+            prob_real, prob_fake = float(probs[0]), float(probs[1])
             pred_label = "REAL" if prob_real >= prob_fake else "FAKE"
             confidence = max(prob_real, prob_fake)
 

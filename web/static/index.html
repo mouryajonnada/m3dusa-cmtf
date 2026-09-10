@@ -3,339 +3,435 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>M3DUSA vs. CMTF — Multimodal Fake News Detection</title>
-    <meta name="description" content="Interactive research interface for automated fake news detection comparing Baseline M3DUSA against novel Cross-Modal Transformer Fusion (CMTF).">
-    
+    <title>M3DUSA · CMTF — Multimodal Fake News Detection</title>
+    <meta name="description" content="Interactive research dashboard for dual-model fake news detection: Baseline M3DUSA vs. novel Cross-Modal Transformer Fusion (CMTF).">
+
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    
-    <!-- Stylesheet -->
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
-    <div class="app-container">
-        <!-- Top Navigation -->
-        <header class="top-nav">
-            <div class="brand">
-                <div class="brand-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="3"></circle>
-                        <path d="M3 12h3m12 0h3M12 3v3m0 12v3M5.6 5.6l2.1 2.1m8.6 8.6l2.1 2.1M5.6 18.4l2.1-2.1m8.6-8.6l2.1-2.1"></path>
+
+    <!-- Animated Dot-Grid Background -->
+    <canvas id="bg-canvas"></canvas>
+
+    <div class="shell">
+
+        <!-- ── LEFT SIDEBAR ── -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div class="brand-logo">
+                    <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="18" cy="18" r="17" stroke="url(#lg1)" stroke-width="2"/>
+                        <circle cx="18" cy="18" r="5" fill="url(#lg1)"/>
+                        <line x1="18" y1="4" x2="18" y2="11" stroke="url(#lg1)" stroke-width="2" stroke-linecap="round"/>
+                        <line x1="18" y1="25" x2="18" y2="32" stroke="url(#lg1)" stroke-width="2" stroke-linecap="round"/>
+                        <line x1="4" y1="18" x2="11" y2="18" stroke="url(#lg1)" stroke-width="2" stroke-linecap="round"/>
+                        <line x1="25" y1="18" x2="32" y2="18" stroke="url(#lg1)" stroke-width="2" stroke-linecap="round"/>
+                        <defs>
+                            <linearGradient id="lg1" x1="0" y1="0" x2="36" y2="36">
+                                <stop offset="0%" stop-color="#00D9B5"/>
+                                <stop offset="100%" stop-color="#0EA5E9"/>
+                            </linearGradient>
+                        </defs>
                     </svg>
                 </div>
                 <div class="brand-text">
-                    <h1>M3DUSA <span>• CMTF</span></h1>
-                    <p>Multimodal Fake News Detection System</p>
+                    <span class="brand-name">M3DUSA</span>
+                    <span class="brand-separator">·</span>
+                    <span class="brand-sub">CMTF</span>
                 </div>
             </div>
 
-            <nav class="nav-tabs">
-                <button class="tab-btn active" data-tab="inspector" id="tab-inspector">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="11" cy="11" r="8"></circle>
-                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                    </svg>
-                    Live Claim Inspector
+            <nav class="sidebar-nav">
+                <button class="nav-item active" data-tab="inspector" id="tab-inspector">
+                    <span class="nav-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    </span>
+                    <span class="nav-label">Claim Inspector</span>
+                    <span class="nav-pip"></span>
                 </button>
-                <button class="tab-btn" data-tab="benchmark" id="tab-benchmark">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="18" y1="20" x2="18" y2="10"></line>
-                        <line x1="12" y1="20" x2="12" y2="4"></line>
-                        <line x1="6" y1="20" x2="6" y2="14"></line>
-                    </svg>
-                    Benchmark & Visualizations
+
+                <button class="nav-item" data-tab="benchmark" id="tab-benchmark">
+                    <span class="nav-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                    </span>
+                    <span class="nav-label">Benchmark</span>
+                    <span class="nav-pip"></span>
                 </button>
-                <button class="tab-btn" data-tab="architecture" id="tab-architecture">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-                        <line x1="8" y1="21" x2="16" y2="21"></line>
-                        <line x1="12" y1="17" x2="12" y2="21"></line>
-                    </svg>
-                    Methodology
+
+                <button class="nav-item" data-tab="architecture" id="tab-architecture">
+                    <span class="nav-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="9" height="9" rx="1"/><rect x="13" y="2" width="9" height="9" rx="1"/><rect x="2" y="13" width="9" height="9" rx="1"/><rect x="13" y="13" width="9" height="9" rx="1"/></svg>
+                    </span>
+                    <span class="nav-label">Methodology</span>
+                    <span class="nav-pip"></span>
                 </button>
             </nav>
 
-            <div class="status-indicator">
-                <span class="status-dot"></span>
-                <span class="status-text">CPU Models Online</span>
+            <div class="sidebar-footer">
+                <div class="status-chip">
+                    <span class="status-pulse"></span>
+                    <span class="status-label">Models Online</span>
+                </div>
+                <div class="version-tag">v1.0.0 · PolitiFact</div>
             </div>
-        </header>
+        </aside>
 
-        <!-- Main Content View -->
-        <main class="main-content">
-            
-            <!-- TAB 1: Live Claim Inspector -->
-            <section class="tab-pane active" id="pane-inspector">
-                <div class="inspector-grid">
-                    
-                    <!-- Input Section -->
-                    <div class="glass-card input-card">
-                        <div class="card-header">
-                            <h2>Analyze Political Claim</h2>
-                            <span class="badge badge-accent">Heterogeneous Evidence Graph</span>
-                        </div>
+        <!-- ── MAIN PANEL ── -->
+        <main class="main-panel">
 
-                        <div class="input-container">
-                            <textarea id="claim-input" placeholder="Paste or type a news headline, political claim, or statement to evaluate veracity..." rows="4"></textarea>
-                            
-                            <div class="input-actions">
-                                <button class="btn btn-secondary" id="btn-clear">Clear</button>
-                                <button class="btn btn-primary" id="btn-analyze">
-                                    <span class="btn-spinner" id="analyze-spinner"></span>
-                                    <span class="btn-text">Run Dual-Model Analysis</span>
-                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-                                        <polyline points="9 18 15 12 9 6"></polyline>
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
+            <!-- ══════════════ TAB 1: CLAIM INSPECTOR ══════════════ -->
+            <section class="view active" id="pane-inspector">
 
-                        <!-- Sample Presets -->
-                        <div class="presets-section">
-                            <label>Curated PolitiFact Presets (1-Click Test):</label>
+                <!-- Page Header -->
+                <div class="view-header">
+                    <div>
+                        <h1 class="view-title">Live Claim Inspector</h1>
+                        <p class="view-sub">Dual-model veracity analysis with heterogeneous evidence graph</p>
+                    </div>
+                    <div class="header-badge">Ctrl+Enter to analyze</div>
+                </div>
+
+                <!-- Input Area -->
+                <div class="input-panel">
+                    <div class="input-wrapper">
+                        <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                        <textarea id="claim-input" placeholder="Paste a news headline, political claim or statement to evaluate veracity…" rows="3" spellcheck="false"></textarea>
+                    </div>
+                    <div class="input-toolbar">
+                        <div class="preset-row">
+                            <span class="preset-label">Quick load:</span>
                             <div class="preset-chips" id="preset-chips">
-                                <!-- Populated dynamically by JS -->
+                                <!-- JS populated -->
                             </div>
                         </div>
-                    </div>
-
-                    <!-- Prediction Results Section -->
-                    <div class="results-container" id="results-container">
-                        
-                        <!-- Agreement Status Bar -->
-                        <div class="agreement-banner" id="agreement-banner">
-                            <div class="agreement-icon" id="agreement-icon">✓</div>
-                            <div class="agreement-content">
-                                <h3 id="agreement-title">Model Agreement</h3>
-                                <p id="agreement-desc">Dual evaluation complete across Baseline M3DUSA and Novel CMTF.</p>
-                            </div>
-                        </div>
-
-                        <!-- Model Comparison Cards Grid -->
-                        <div class="models-grid">
-                            
-                            <!-- Baseline M3DUSA Card -->
-                            <div class="glass-card model-card baseline-card">
-                                <div class="model-badge-header">
-                                    <span class="model-tag">Baseline Architecture</span>
-                                    <span class="model-ref">Martirano et al. (2025)</span>
-                                </div>
-                                
-                                <h3>M3DUSA Late Fusion</h3>
-                                <p class="model-desc">RoBERTa-base + 2-layer HGTConv + Late Linear Concatenation</p>
-
-                                <div class="prediction-hero" id="base-hero">
-                                    <span class="prediction-tag tag-neutral" id="base-label">—</span>
-                                    <span class="confidence-val" id="base-conf">0.0% Conf.</span>
-                                </div>
-
-                                <div class="prob-breakdown">
-                                    <div class="prob-row">
-                                        <span class="prob-label">Fake News Probability</span>
-                                        <span class="prob-num" id="base-prob-fake">0.0%</span>
-                                    </div>
-                                    <div class="meter-track">
-                                        <div class="meter-bar meter-fake" id="base-bar-fake" style="width: 0%"></div>
-                                    </div>
-
-                                    <div class="prob-row">
-                                        <span class="prob-label">Real News Probability</span>
-                                        <span class="prob-num" id="base-prob-real">0.0%</span>
-                                    </div>
-                                    <div class="meter-track">
-                                        <div class="meter-bar meter-real" id="base-bar-real" style="width: 0%"></div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Novel CMTF Card -->
-                            <div class="glass-card model-card cmtf-card highlight-glow">
-                                <div class="model-badge-header">
-                                    <span class="model-tag tag-novel">Novel Contribution</span>
-                                    <span class="model-ref">Bidirectional Cross-Attention</span>
-                                </div>
-                                
-                                <h3>Cross-Modal Transformer (CMTF)</h3>
-                                <p class="model-desc">2-Layer 8-Head Text ↔ Graph Bidirectional Cross-Attention</p>
-
-                                <div class="prediction-hero" id="cmtf-hero">
-                                    <span class="prediction-tag tag-neutral" id="cmtf-label">—</span>
-                                    <span class="confidence-val" id="cmtf-conf">0.0% Conf.</span>
-                                </div>
-
-                                <div class="prob-breakdown">
-                                    <div class="prob-row">
-                                        <span class="prob-label">Fake News Probability</span>
-                                        <span class="prob-num" id="cmtf-prob-fake">0.0%</span>
-                                    </div>
-                                    <div class="meter-track">
-                                        <div class="meter-bar meter-fake" id="cmtf-bar-fake" style="width: 0%"></div>
-                                    </div>
-
-                                    <div class="prob-row">
-                                        <span class="prob-label">Real News Probability</span>
-                                        <span class="prob-num" id="cmtf-prob-real">0.0%</span>
-                                    </div>
-                                    <div class="meter-track">
-                                        <div class="meter-bar meter-real" id="cmtf-bar-real" style="width: 0%"></div>
-                                    </div>
-                                </div>
-                            </div>
-
-                        </div>
-
-                        <!-- Graph & Entity Details Card -->
-                        <div class="glass-card graph-card">
-                            <div class="card-header">
-                                <h3>Constructed Heterogeneous Evidence Graph</h3>
-                                <div class="graph-badges">
-                                    <span class="badge" id="badge-news-nodes">News Nodes: 1</span>
-                                    <span class="badge" id="badge-hash-nodes">Hashtags: 0</span>
-                                    <span class="badge" id="badge-edges">Edges: 0</span>
-                                </div>
-                            </div>
-
-                            <div class="graph-visualizer" id="graph-visualizer">
-                                <svg id="graph-svg" width="100%" height="220"></svg>
-                            </div>
-
-                            <div class="extracted-entities" id="extracted-entities">
-                                <span class="label">Extracted Hashtags & Semantic Anchors:</span>
-                                <div class="tag-list" id="hashtags-list">
-                                    <span class="empty-hint">No hashtags extracted from input text.</span>
-                                </div>
-                            </div>
-                        </div>
-
-                    </div>
-                </div>
-            </section>
-
-            <!-- TAB 2: Research Benchmark & Visualizations -->
-            <section class="tab-pane" id="pane-benchmark">
-                <div class="benchmark-container">
-                    
-                    <!-- KPI Cards -->
-                    <div class="kpi-grid">
-                        <div class="glass-card kpi-card">
-                            <span class="kpi-title">Held-Out Test Accuracy</span>
-                            <div class="kpi-val">87.55%</div>
-                            <span class="kpi-sub positive">+1.13% vs Baseline (86.42%)</span>
-                        </div>
-
-                        <div class="glass-card kpi-card">
-                            <span class="kpi-title">Macro F1 Score</span>
-                            <div class="kpi-val">87.01%</div>
-                            <span class="kpi-sub positive">+1.30% vs Baseline (85.71%)</span>
-                        </div>
-
-                        <div class="glass-card kpi-card">
-                            <span class="kpi-title">Fake News F1 (Minority Class)</span>
-                            <div class="kpi-val highlight">84.36%</div>
-                            <span class="kpi-sub positive font-bold">+1.84% Significant Gain</span>
-                        </div>
-
-                        <div class="glass-card kpi-card">
-                            <span class="kpi-title">AUC-ROC (ROC Discrimination)</span>
-                            <div class="kpi-val">0.9448</div>
-                            <span class="kpi-sub positive">+0.0046 vs Baseline (0.9402)</span>
-                        </div>
-                    </div>
-
-                    <!-- Metrics Table -->
-                    <div class="glass-card table-card">
-                        <div class="card-header">
-                            <h2>Full Experimental Comparison (PolitiFact 265 Test Claims)</h2>
-                            <a href="/static/results/metrics/comparison.csv" download class="btn btn-secondary btn-sm">
-                                Download CSV
-                            </a>
-                        </div>
-                        <div class="table-responsive">
-                            <table class="benchmark-table" id="benchmark-table">
-                                <thead>
-                                    <tr>
-                                        <th>Evaluation Metric</th>
-                                        <th>Baseline M3DUSA</th>
-                                        <th>Novel CMTF</th>
-                                        <th>Absolute Δ</th>
-                                        <th>Relative Gain</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <!-- Populated dynamically via JS -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <!-- Visualizations Side-by-Side -->
-                    <div class="plots-grid">
-                        <div class="glass-card plot-card">
-                            <h3>Performance Comparison Across Metrics</h3>
-                            <p>Direct benchmark of all classification axes on held-out test data.</p>
-                            <div class="img-frame">
-                                <img src="/plots/baseline_vs_cmtf_metrics.png" alt="Metrics Comparison Bar Chart">
-                            </div>
-                        </div>
-
-                        <div class="glass-card plot-card">
-                            <h3>2D UMAP Latent Manifold Projection</h3>
-                            <p>Visualizing separation between Fake (Red) and Real (Blue) claims.</p>
-                            <div class="img-frame">
-                                <img src="/plots/umap_embeddings.png" alt="UMAP Embeddings Latent Space">
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-            </section>
-
-            <!-- TAB 3: Methodology -->
-            <section class="tab-pane" id="pane-architecture">
-                <div class="glass-card architecture-card">
-                    <h2>Methodology: Overcoming the Late-Fusion Bottleneck</h2>
-                    
-                    <div class="arch-comparison-diagram">
-                        <div class="arch-box">
-                            <h4>Baseline M3DUSA (Martirano et al., 2025)</h4>
-                            <div class="formula">h_late = Linear(concat(h_text, h_graph))</div>
-                            <p>Text representation (RoBERTa CLS) and graph representation (GAT-pooled) are extracted independently and concatenated at the very final layer. The network cannot correlate individual deceptive words with specific social discourse markers.</p>
-                        </div>
-
-                        <div class="arch-box highlight">
-                            <h4>Novel Cross-Modal Transformer Fusion (CMTF)</h4>
-                            <div class="formula">Q_text · K_graph^T &nbsp;|&nbsp; Q_graph · K_text^T</div>
-                            <p>Stacks 2 bidirectional cross-attention layers with 8 heads. RoBERTa token vectors actively query hashtag and evidence nodes, unmasking deceptive claims that mimic authentic journalistic grammar by flagging missing social consensus.</p>
-                        </div>
-                    </div>
-
-                    <div class="specs-grid">
-                        <div class="spec-item">
-                            <strong>Text Backbone:</strong> RoBERTa-base (768-dim, 12 layers)
-                        </div>
-                        <div class="spec-item">
-                            <strong>Graph Backbone:</strong> 2-Layer HGTConv (256-dim, 4 heads)
-                        </div>
-                        <div class="spec-item">
-                            <strong>Cross-Attention:</strong> 2 Layers, 8 Heads, 256-dim, Bidirectional
-                        </div>
-                        <div class="spec-item">
-                            <strong>Dataset:</strong> PolitiFact (1,056 claims, 60/15/25 Stratified Split)
+                        <div class="input-actions">
+                            <button class="btn btn-ghost" id="btn-clear">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                                Clear
+                            </button>
+                            <button class="btn btn-primary" id="btn-analyze">
+                                <span class="btn-spinner" id="analyze-spinner"></span>
+                                <svg class="btn-icon-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                                <span class="btn-text">Run Analysis</span>
+                            </button>
                         </div>
                     </div>
                 </div>
+
+                <!-- Results Grid -->
+                <div class="results-area" id="results-area">
+
+                    <!-- Agreement banner -->
+                    <div class="agreement-strip" id="agreement-banner">
+                        <div class="agreement-dot" id="agreement-icon">✓</div>
+                        <div>
+                            <div class="agreement-title" id="agreement-title">Awaiting analysis…</div>
+                            <div class="agreement-desc" id="agreement-desc">Submit a claim above to run dual-model evaluation.</div>
+                        </div>
+                        <div class="agreement-models-badge">M3DUSA · CMTF</div>
+                    </div>
+
+                    <!-- Two model cards -->
+                    <div class="model-row">
+
+                        <!-- Baseline Card -->
+                        <div class="model-card baseline-card">
+                            <div class="mc-header">
+                                <div class="mc-tag tag-baseline">Baseline</div>
+                                <div class="mc-ref">Martirano et al., 2025</div>
+                            </div>
+                            <h2 class="mc-name">M3DUSA Late Fusion</h2>
+                            <p class="mc-desc">RoBERTa + HGTConv → Linear Concat</p>
+
+                            <!-- Circular Gauge -->
+                            <div class="gauge-wrap">
+                                <svg class="gauge-svg" viewBox="0 0 120 120">
+                                    <circle class="gauge-track" cx="60" cy="60" r="50"/>
+                                    <circle class="gauge-fill gauge-base" id="base-gauge" cx="60" cy="60" r="50"
+                                        stroke-dasharray="0 314"
+                                        transform="rotate(-90 60 60)"/>
+                                    <text class="gauge-pct" id="base-conf-pct" x="60" y="56" text-anchor="middle">—</text>
+                                    <text class="gauge-sub-text" id="base-conf-label" x="60" y="72" text-anchor="middle">Confidence</text>
+                                </svg>
+                                <div class="verdict-pill" id="base-verdict">
+                                    <span class="verdict-tag tag-neutral" id="base-label">—</span>
+                                </div>
+                            </div>
+
+                            <!-- Probability bars -->
+                            <div class="prob-section">
+                                <div class="prob-item">
+                                    <div class="prob-meta">
+                                        <span class="prob-name">Real</span>
+                                        <span class="prob-val" id="base-prob-real">0.0%</span>
+                                    </div>
+                                    <div class="prob-track">
+                                        <div class="prob-fill fill-real" id="base-bar-real" style="width:0%"></div>
+                                    </div>
+                                </div>
+                                <div class="prob-item">
+                                    <div class="prob-meta">
+                                        <span class="prob-name">Fake</span>
+                                        <span class="prob-val" id="base-prob-fake">0.0%</span>
+                                    </div>
+                                    <div class="prob-track">
+                                        <div class="prob-fill fill-fake" id="base-bar-fake" style="width:0%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- CMTF Card -->
+                        <div class="model-card cmtf-card">
+                            <div class="mc-header">
+                                <div class="mc-tag tag-novel">Novel · CMTF</div>
+                                <div class="mc-ref">Bidirectional Cross-Attention</div>
+                            </div>
+                            <h2 class="mc-name">Cross-Modal Transformer</h2>
+                            <p class="mc-desc">RoBERTa ↔ HGTConv · 2-Layer 8-Head</p>
+
+                            <!-- Circular Gauge -->
+                            <div class="gauge-wrap">
+                                <svg class="gauge-svg" viewBox="0 0 120 120">
+                                    <circle class="gauge-track" cx="60" cy="60" r="50"/>
+                                    <circle class="gauge-fill gauge-cmtf" id="cmtf-gauge" cx="60" cy="60" r="50"
+                                        stroke-dasharray="0 314"
+                                        transform="rotate(-90 60 60)"/>
+                                    <text class="gauge-pct" id="cmtf-conf-pct" x="60" y="56" text-anchor="middle">—</text>
+                                    <text class="gauge-sub-text" id="cmtf-conf-label" x="60" y="72" text-anchor="middle">Confidence</text>
+                                </svg>
+                                <div class="verdict-pill" id="cmtf-verdict">
+                                    <span class="verdict-tag tag-neutral" id="cmtf-label">—</span>
+                                </div>
+                            </div>
+
+                            <!-- Probability bars -->
+                            <div class="prob-section">
+                                <div class="prob-item">
+                                    <div class="prob-meta">
+                                        <span class="prob-name">Real</span>
+                                        <span class="prob-val" id="cmtf-prob-real">0.0%</span>
+                                    </div>
+                                    <div class="prob-track">
+                                        <div class="prob-fill fill-real" id="cmtf-bar-real" style="width:0%"></div>
+                                    </div>
+                                </div>
+                                <div class="prob-item">
+                                    <div class="prob-meta">
+                                        <span class="prob-name">Fake</span>
+                                        <span class="prob-val" id="cmtf-prob-fake">0.0%</span>
+                                    </div>
+                                    <div class="prob-track">
+                                        <div class="prob-fill fill-fake" id="cmtf-bar-fake" style="width:0%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div><!-- /.model-row -->
+
+                    <!-- Evidence Graph Card -->
+                    <div class="graph-panel">
+                        <div class="graph-panel-header">
+                            <div>
+                                <h3 class="graph-title">Heterogeneous Evidence Graph</h3>
+                                <p class="graph-sub">Constructed from input claim at inference time</p>
+                            </div>
+                            <div class="graph-stats-row">
+                                <div class="gstat">
+                                    <span class="gstat-val" id="badge-news-nodes">1</span>
+                                    <span class="gstat-lbl">News</span>
+                                </div>
+                                <div class="gstat-divider"></div>
+                                <div class="gstat">
+                                    <span class="gstat-val" id="badge-hash-nodes">0</span>
+                                    <span class="gstat-lbl">Hashtags</span>
+                                </div>
+                                <div class="gstat-divider"></div>
+                                <div class="gstat">
+                                    <span class="gstat-val" id="badge-edges">0</span>
+                                    <span class="gstat-lbl">Edges</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="graph-canvas-wrap">
+                            <svg id="graph-svg" width="100%" height="200"></svg>
+                        </div>
+                        <div class="hashtag-row">
+                            <span class="hashtag-label">Extracted anchors:</span>
+                            <div class="hashtag-chips" id="hashtags-list">
+                                <span class="empty-hint">Submit a claim to see extracted hashtags.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div><!-- /#results-area -->
             </section>
 
-        </main>
 
-        <footer class="app-footer">
-            <p>M3DUSA-CMTF Research Prototype • Google Antigravity IDE • PolitiFact Multimodal Benchmark</p>
-        </footer>
-    </div>
+            <!-- ══════════════ TAB 2: BENCHMARK ══════════════ -->
+            <section class="view" id="pane-benchmark">
+                <div class="view-header">
+                    <div>
+                        <h1 class="view-title">Research Benchmark</h1>
+                        <p class="view-sub">PolitiFact held-out test set · 265 claims · Stratified 25% split</p>
+                    </div>
+                    <a href="/api/benchmark" download="comparison.csv" class="btn btn-ghost btn-sm">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Export CSV
+                    </a>
+                </div>
 
-    <!-- Application Logic -->
+                <!-- KPI Row -->
+                <div class="kpi-row">
+                    <div class="kpi-card">
+                        <span class="kpi-label">Test Accuracy</span>
+                        <div class="kpi-main">87.55%</div>
+                        <div class="kpi-delta positive">▲ +1.13% vs Baseline</div>
+                    </div>
+                    <div class="kpi-card">
+                        <span class="kpi-label">Macro F1</span>
+                        <div class="kpi-main">87.01%</div>
+                        <div class="kpi-delta positive">▲ +1.30% vs Baseline</div>
+                    </div>
+                    <div class="kpi-card highlight-kpi">
+                        <span class="kpi-label">Fake-Class F1</span>
+                        <div class="kpi-main gradient-text">84.36%</div>
+                        <div class="kpi-delta positive">▲ +1.84% · Minority Win</div>
+                    </div>
+                    <div class="kpi-card">
+                        <span class="kpi-label">AUC-ROC</span>
+                        <div class="kpi-main">0.9448</div>
+                        <div class="kpi-delta positive">▲ +0.0046 vs Baseline</div>
+                    </div>
+                </div>
+
+                <!-- Metrics Table -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h2 class="panel-title">Full Metrics Comparison</h2>
+                        <span class="panel-tag">Live from checkpoint</span>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="metrics-table" id="benchmark-table">
+                            <thead>
+                                <tr>
+                                    <th>Metric</th>
+                                    <th>Baseline M3DUSA</th>
+                                    <th>Novel CMTF</th>
+                                    <th>Δ Absolute</th>
+                                    <th>Δ Relative</th>
+                                </tr>
+                            </thead>
+                            <tbody><!-- JS populated --></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Visualizations -->
+                <div class="plots-row">
+                    <div class="panel plot-panel">
+                        <h3 class="panel-title">Performance Comparison</h3>
+                        <p class="panel-sub">All classification axes on held-out data</p>
+                        <div class="plot-frame">
+                            <img src="/plots/baseline_vs_cmtf_metrics.png" alt="Metrics bar chart" loading="lazy">
+                        </div>
+                    </div>
+                    <div class="panel plot-panel">
+                        <h3 class="panel-title">UMAP Latent Manifold</h3>
+                        <p class="panel-sub">Fake (red) vs Real (blue) embedding separation</p>
+                        <div class="plot-frame">
+                            <img src="/plots/umap_embeddings.png" alt="UMAP embeddings" loading="lazy">
+                        </div>
+                    </div>
+                </div>
+
+            </section>
+
+
+            <!-- ══════════════ TAB 3: METHODOLOGY ══════════════ -->
+            <section class="view" id="pane-architecture">
+                <div class="view-header">
+                    <div>
+                        <h1 class="view-title">Methodology</h1>
+                        <p class="view-sub">Overcoming the late-fusion bottleneck via bidirectional cross-attention</p>
+                    </div>
+                </div>
+
+                <div class="arch-grid">
+                    <!-- Baseline arch box -->
+                    <div class="arch-card">
+                        <div class="arch-card-label">Baseline</div>
+                        <h3 class="arch-card-title">M3DUSA Late Fusion</h3>
+                        <div class="formula-box">h_late = Linear(concat(h_text, h_graph))</div>
+                        <p class="arch-desc">Text (RoBERTa CLS) and graph (GAT-pooled) representations are computed independently and concatenated at the final layer. Intermodal alignment is limited to parameter sharing in the classifier head — deceptive tokens cannot cross-reference social discourse markers.</p>
+                        <div class="arch-pipeline">
+                            <div class="pipe-node pipe-text">Text<br><small>RoBERTa-768</small></div>
+                            <div class="pipe-arrow">→</div>
+                            <div class="pipe-node pipe-graph">Graph<br><small>HGTConv-256</small></div>
+                            <div class="pipe-arrow">→</div>
+                            <div class="pipe-node pipe-fusion">Concat<br><small>Linear</small></div>
+                            <div class="pipe-arrow">→</div>
+                            <div class="pipe-node pipe-cls">Cls</div>
+                        </div>
+                    </div>
+
+                    <!-- CMTF arch box -->
+                    <div class="arch-card arch-card-highlight">
+                        <div class="arch-card-label label-novel">Novel · CMTF</div>
+                        <h3 class="arch-card-title">Cross-Modal Transformer Fusion</h3>
+                        <div class="formula-box formula-highlight">Q_text · K_graph^T &nbsp;|&nbsp; Q_graph · K_text^T</div>
+                        <p class="arch-desc">Two bidirectional cross-attention layers (8 heads, 256 dim) allow RoBERTa token vectors to attend over hashtag/evidence graph nodes and vice-versa. Deceptive claims that mimic authentic journalistic grammar are exposed by missing social consensus signals.</p>
+                        <div class="arch-pipeline">
+                            <div class="pipe-node pipe-text">Text<br><small>RoBERTa-768</small></div>
+                            <div class="pipe-arrow pipe-arrow-teal">⇌</div>
+                            <div class="pipe-node pipe-graph">Graph<br><small>HGTConv-256</small></div>
+                            <div class="pipe-arrow">→</div>
+                            <div class="pipe-node pipe-fusion pipe-fusion-teal">XAttn<br><small>2L·8H</small></div>
+                            <div class="pipe-arrow">→</div>
+                            <div class="pipe-node pipe-cls">Cls</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Specs grid -->
+                <div class="specs-grid">
+                    <div class="spec-card">
+                        <div class="spec-icon">🧠</div>
+                        <div class="spec-label">Text Backbone</div>
+                        <div class="spec-val">RoBERTa-base</div>
+                        <div class="spec-detail">768-dim · 12 layers · frozen</div>
+                    </div>
+                    <div class="spec-card">
+                        <div class="spec-icon">🕸️</div>
+                        <div class="spec-label">Graph Backbone</div>
+                        <div class="spec-val">2-Layer HGTConv</div>
+                        <div class="spec-detail">256-dim · 4 heads · residual</div>
+                    </div>
+                    <div class="spec-card">
+                        <div class="spec-icon">⚡</div>
+                        <div class="spec-label">Cross-Attention</div>
+                        <div class="spec-val">2L · 8H · Bidirectional</div>
+                        <div class="spec-detail">256-dim output · 2.5M new params</div>
+                    </div>
+                    <div class="spec-card">
+                        <div class="spec-icon">📊</div>
+                        <div class="spec-label">Dataset</div>
+                        <div class="spec-val">PolitiFact · 1,056</div>
+                        <div class="spec-detail">60/15/25 stratified split</div>
+                    </div>
+                </div>
+
+            </section>
+
+        </main><!-- /.main-panel -->
+    </div><!-- /.shell -->
+
     <script src="/static/js/main.js"></script>
 </body>
 </html>
