@@ -54,6 +54,7 @@ results/checkpoints/*
 *.ckpt
 *.bin
 checkpoints/
+trained_models/
 
 # =============================================================================
 # Environment & Secrets
