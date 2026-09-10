@@ -114,20 +114,38 @@ pip install -r requirements.txt
 
 ## Running Experiments
 
-Experiments are fully config-driven — switch between methods by swapping the YAML file:
+Experiments are fully config-driven. The entry point is `scripts/train.py`:
 
+### 1. Data Pipeline Diagnostics
+Sanity check raw data loading, graph extraction, and stratified 60/15/25 split:
 ```bash
-# Reproduce M3DUSA baseline
-python -m src.training.trainer --config experiments/baseline_m3dusa.yaml
-
-# Run Cross-Modal Transformer Fusion
-python -m src.training.trainer --config experiments/cross_modal_fusion.yaml
-
-# Override individual keys without editing YAML (future CLI):
-python -m src.training.trainer \
-    --config experiments/baseline_m3dusa.yaml \
-    --set training.lr=1e-4 experiment.seed=7
+python scripts/run_diagnostics.py
 ```
+
+### 2. Train Baseline M3DUSA (Late Fusion)
+```bash
+python scripts/train.py --config experiments/baseline_m3dusa.yaml \
+    --override model.freeze_text_encoder=True training.epochs=5 training.batch_size=16
+```
+
+### 3. Train Novel Cross-Modal Transformer Fusion (CMTF)
+```bash
+python scripts/train.py --config experiments/cross_modal_fusion.yaml \
+    --override model.freeze_text_encoder=True training.epochs=5 training.batch_size=16
+```
+
+### 4. Generate Comparisons, Bar Chart, & UMAP Visualizations
+Extract test set embeddings, compute UMAP 2D projections, generate bar charts, and export CSV/Markdown reports:
+```bash
+python scripts/generate_results.py
+```
+
+Outputs are automatically saved to:
+- Checkpoints: `results/checkpoints/{experiment_name}/best_model.pt`
+- Metrics: `results/metrics/{experiment_name}/test_metrics.json` & `history.csv`
+- Full Comparison Table: `results/metrics/comparison.csv`
+- Plots: `results/plots/baseline_vs_cmtf_metrics.png` & `results/plots/umap_embeddings.png`
+- Summary Report: `results_summary.md`
 
 ---
 
