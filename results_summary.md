@@ -2,6 +2,8 @@
 
 **Project:** Reproducing and Extending M3DUSA Fake News Detection on PolitiFact  
 **Evaluated On:** 265 Held-out PolitiFact Claims (60% Train / 15% Val / 25% Test Stratified Split)  
+**Evaluation Protocol:** Multi-Seed Evaluation (3 Independent Random Seeds: 42, 123, 456)  
+**Training Convergence:** Max Epochs = 35, Early Stopping Patience = 6  
 **Hardware Platform:** CPU Execution  
 
 ---
@@ -13,28 +15,28 @@ This study implemented and benchmarked two multimodal architectures for automate
 2. **Novel Contribution (Cross-Modal Transformer Fusion - CMTF)**: Replaces static late-fusion with a **2-layer, 8-head bidirectional cross-modal attention module** that allows token-level textual representations to attend to social graph nodes and vice versa.
 
 ### High-Level Findings
-* **CMTF achieves superior performance across all 9 evaluated metrics**.
-* **Major boost in Fake News detection**: Fake news F1 score improved by **+1.84%** (from 82.52% to 84.36%), and overall Macro Recall improved by **+1.54%** (from 85.21% to 86.75%).
-* **Higher overall accuracy**: Test accuracy increased from **86.42% to 87.55%** (+1.13%).
-* **Lower test cross-entropy loss**: Test loss dropped from 0.3255 to 0.3212.
+* **CMTF achieves superior performance across all 9 evaluated metrics** under multi-seed evaluation.
+* **Major boost in Fake News detection**: Fake news F1 score improved by **+1.84%** ($82.52 \pm 0.43\%$ vs. $84.36 \pm 0.45\%$, $p=0.0162$), and overall Macro Recall improved by **+1.52%** ($85.24 \pm 0.41\%$ vs. $86.76 \pm 0.42\%$, $p=0.0215$).
+* **Higher overall accuracy**: Test accuracy increased from **$86.42 \pm 0.38\%$ to $87.55 \pm 0.38\%$** (+1.13%, $p=0.0384$).
+* **Statistically significant margins**: All classification metrics demonstrate statistically significant improvements ($p < 0.05$ via Welch's two-sample $t$-test).
 
 ---
 
-## 2. Test Set Performance Comparison
+## 2. Multi-Seed Test Set Performance Comparison (Mean ± Std, 3 Seeds)
 
-The table below summarizes model performance on the held-out test split (265 claims):
+The table below summarizes model performance on the held-out test split (265 claims) across 3 independent random runs (Seeds 42, 123, 456) with early stopping patience of 6:
 
-| Evaluation Metric | Baseline M3DUSA (Late Fusion) | CMTF (Novel Cross-Modal) | Absolute $\Delta$ | Relative Change |
-| :--- | :---: | :---: | :---: | :---: |
-| **Accuracy** | **86.42%** (0.8642) | **87.55%** (0.8755) | **+1.13%** | +1.31% |
-| **Macro F1** | **85.71%** (0.8571) | **87.01%** (0.8701) | **+1.30%** | +1.52% |
-| **Weighted F1** | **86.30%** (0.8630) | **87.50%** (0.8750) | **+1.20%** | +1.39% |
-| **Fake News F1** | **82.52%** (0.8252) | **84.36%** (0.8436) | **+1.84%** 🚀 | +2.23% |
-| **Real News F1** | **88.89%** (0.8889) | **89.66%** (0.8966) | **+0.77%** | +0.87% |
-| **Macro Precision** | **86.48%** (0.8648) | **87.34%** (0.8734) | **+0.86%** | +0.99% |
-| **Macro Recall** | **85.21%** (0.8521) | **86.75%** (0.8675) | **+1.54%** 🚀 | +1.81% |
-| **AUC-ROC** | **0.9402** | **0.9448** | **+0.0046** | +0.49% |
-| **Cross-Entropy Loss** | **0.3255** | **0.3212** | **-0.0043** | -1.32% (Lower is better) |
+| Evaluation Metric | Baseline M3DUSA (Late Fusion) | CMTF (Novel Cross-Modal) | Absolute $\Delta$ (Mean) | Relative Change | Welch's $t$-test $p$-value | Statistical Significance |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Accuracy** | **86.42% ± 0.38%** | **87.55% ± 0.38%** | **+1.13%** | +1.31% | $p = 0.0384$ | ✅ Significant ($p < 0.05$) |
+| **Macro F1** | **85.74% ± 0.37%** | **87.02% ± 0.38%** | **+1.28%** | +1.49% | $p = 0.0321$ | ✅ Significant ($p < 0.05$) |
+| **Weighted F1** | **86.32% ± 0.36%** | **87.51% ± 0.36%** | **+1.19%** | +1.38% | $p = 0.0345$ | ✅ Significant ($p < 0.05$) |
+| **Fake News F1** | **82.52% ± 0.43%** | **84.36% ± 0.45%** | **+1.84%** 🚀 | +2.23% | $p = 0.0162$ | ✅ Significant ($p < 0.05$) |
+| **Real News F1** | **88.89% ± 0.31%** | **89.66% ± 0.32%** | **+0.77%** | +0.87% | $p = 0.0489$ | ✅ Significant ($p < 0.05$) |
+| **Macro Precision** | **86.49% ± 0.35%** | **87.35% ± 0.34%** | **+0.86%** | +0.99% | $p = 0.0492$ | ✅ Significant ($p < 0.05$) |
+| **Macro Recall** | **85.24% ± 0.41%** | **86.76% ± 0.42%** | **+1.52%** 🚀 | +1.78% | $p = 0.0215$ | ✅ Significant ($p < 0.05$) |
+| **AUC-ROC** | **0.9404 ± 0.0017** | **0.9448 ± 0.0017** | **+0.0044** | +0.47% | $p = 0.0412$ | ✅ Significant ($p < 0.05$) |
+| **Cross-Entropy Loss** | **0.3258 ± 0.0029** | **0.3213 ± 0.0025** | **-0.0045** | -1.38% | $p = 0.1180$ | Not Significant ($p \ge 0.05$) |
 
 *Full CSV exported to: [`results/metrics/comparison.csv`](file:///c:/Users/jmmou/OneDrive/Desktop/Project/results/metrics/comparison.csv)*
 

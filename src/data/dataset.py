@@ -260,6 +260,13 @@ def collate_fn(batch: list[PolitiFactSample]) -> dict:
     labels         = torch.tensor([s.label for s in batch], dtype=torch.long)
     graph_batch    = Batch.from_data_list([s.graph for s in batch])
 
+    # Dynamic padding trimming: slice away unused trailing padding across batch
+    # Eliminates hundreds of empty tokens with 0% data loss, speeding up attention dramatically
+    max_len = int(attention_mask.sum(dim=-1).max().item())
+    max_len = max(max_len, 8)
+    input_ids      = input_ids[:, :max_len]
+    attention_mask = attention_mask[:, :max_len]
+
     return {
         "input_ids":      input_ids,
         "attention_mask": attention_mask,

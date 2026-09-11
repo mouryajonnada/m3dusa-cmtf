@@ -14,7 +14,7 @@ data:
   raw_dir: data/raw
   processed_dir: data/processed
   splits: [0.60, 0.15, 0.25]         # train / val / test fractions
-  max_text_length: 512
+  max_text_length: 128
   graph:
     edge_features: false
 
@@ -43,7 +43,7 @@ model:
     activation: relu
 
 training:
-  epochs: 50
+  epochs: 35
   batch_size: 32
   lr: 2.0e-5
   head_lr_scale: 10                  # head LR = lr * head_lr_scale
@@ -51,7 +51,7 @@ training:
   scheduler: cosine
   warmup_steps: 100
   grad_clip: 1.0
-  early_stopping_patience: 7
+  early_stopping_patience: 6
 
 results:
   output_dir: results/
