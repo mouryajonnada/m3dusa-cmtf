@@ -149,12 +149,14 @@ class _CrossAttentionBlock(nn.Module):
 
     def __init__(
         self,
-        dim:       int,
-        num_heads: int,
-        ff_dim:    int,
-        dropout:   float,
+        dim:          int,
+        num_heads:    int,
+        ff_dim:       int,
+        dropout:      float,
+        use_residual: bool = True,
     ) -> None:
         super().__init__()
+        self.use_residual = use_residual
         self.attn = nn.MultiheadAttention(
             embed_dim=dim,
             num_heads=num_heads,
@@ -174,8 +176,12 @@ class _CrossAttentionBlock(nn.Module):
     ) -> torch.Tensor:
         """Apply cross-attention from ``query`` sequence to ``key/value``."""
         attn_out, _ = self.attn(query, key, value)  # (B, L_q, dim)
-        query = self.norm1(query + self.drop(attn_out))
-        query = self.norm2(query + self.ffn(query))
+        if self.use_residual:
+            query = self.norm1(query + self.drop(attn_out))
+            query = self.norm2(query + self.ffn(query))
+        else:
+            query = self.norm1(self.drop(attn_out))
+            query = self.norm2(self.ffn(query))
         return query
 
 
@@ -204,6 +210,7 @@ class CrossModalFusion(nn.Module):
         feedforward_dim:  FFN hidden dimension inside each block.
         dropout:          Dropout probability.
         bidirectional:    Whether to also apply Graph→Text cross-attention.
+        use_residual:     Whether to use residual connections around attention & FFN.
     """
 
     def __init__(
@@ -217,10 +224,12 @@ class CrossModalFusion(nn.Module):
         feedforward_dim:   int   = 512,
         dropout:           float = 0.1,
         bidirectional:     bool  = True,
+        use_residual:      bool  = True,
     ) -> None:
         super().__init__()
         self.fusion_dim    = fusion_hidden_dim
         self.bidirectional = bidirectional
+        self.use_residual  = use_residual
 
         # ── Input projections: text & graph → fusion_hidden_dim ───────
         self.text_proj  = nn.Linear(text_dim,  fusion_hidden_dim)
@@ -228,12 +237,12 @@ class CrossModalFusion(nn.Module):
 
         # ── Stacked cross-attention layers ─────────────────────────────
         self.text_to_graph_layers = nn.ModuleList([
-            _CrossAttentionBlock(fusion_hidden_dim, num_heads, feedforward_dim, dropout)
+            _CrossAttentionBlock(fusion_hidden_dim, num_heads, feedforward_dim, dropout, use_residual=use_residual)
             for _ in range(num_layers)
         ])
         if bidirectional:
             self.graph_to_text_layers = nn.ModuleList([
-                _CrossAttentionBlock(fusion_hidden_dim, num_heads, feedforward_dim, dropout)
+                _CrossAttentionBlock(fusion_hidden_dim, num_heads, feedforward_dim, dropout, use_residual=use_residual)
                 for _ in range(num_layers)
             ])
 
@@ -249,7 +258,7 @@ class CrossModalFusion(nn.Module):
             f"CrossModalFusion: text({text_dim}) + graph({graph_dim}) "
             f"-> fusion_dim={fusion_hidden_dim}  layers={num_layers}  "
             f"heads={num_heads}  bidirectional={bidirectional}  "
-            f"output_dim={output_dim}  params={n_params:,}"
+            f"residual={use_residual}  output_dim={output_dim}  params={n_params:,}"
         )
 
     def forward(
@@ -324,6 +333,9 @@ def build_fusion(
         )
 
     elif method == "cross_modal":
+        use_residual = getattr(f_cfg, "use_residual", True)
+        if use_residual is None:
+            use_residual = True
         return CrossModalFusion(
             text_dim=text_dim,
             graph_dim=graph_dim,
@@ -334,6 +346,7 @@ def build_fusion(
             feedforward_dim=f_cfg.feedforward_dim,
             dropout=f_cfg.dropout,
             bidirectional=f_cfg.bidirectional,
+            use_residual=bool(use_residual),
         )
 
     else:
