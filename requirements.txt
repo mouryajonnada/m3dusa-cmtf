@@ -44,3 +44,9 @@ seaborn>=0.13.0
 # --- Utilities ---
 tqdm>=4.66.0
 pyyaml>=6.0.1
+
+# --- Web Application & API ---
+fastapi>=0.110.0
+uvicorn>=0.29.0
+pydantic>=2.0.0
+
