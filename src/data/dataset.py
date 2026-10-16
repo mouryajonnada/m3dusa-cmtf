@@ -100,16 +100,19 @@ def _find_column(df: pd.DataFrame, candidates: list[str]) -> Optional[str]:
     return None
 
 
-def load_fakenewsnet(raw_dir: Union[str, Path]) -> list[dict]:
-    """Load raw FakeNewsNet PolitiFact CSVs and return normalised records.
+def load_fakenewsnet(
+    raw_dir: Union[str, Path],
+    prefix: str = "politifact",
+) -> list[dict]:
+    """Load raw news CSVs and return normalised records.
 
-    Reads ``politifact_fake.csv`` and ``politifact_real.csv`` from *raw_dir*,
+    Reads ``{prefix}_fake.csv`` and ``{prefix}_real.csv`` from *raw_dir*,
     assigns binary labels (0 = real, 1 = fake), and applies robust column
     detection to handle minor naming variations.
 
     Args:
-        raw_dir: Directory containing ``politifact_fake.csv`` and
-                 ``politifact_real.csv``.
+        raw_dir: Directory containing fake and real CSVs.
+        prefix:  Dataset file prefix (e.g. "politifact" or "fakenewscorpus").
 
     Returns:
         List of dicts with keys ``"id"``, ``"title"``, ``"label"``.
@@ -122,15 +125,19 @@ def load_fakenewsnet(raw_dir: Union[str, Path]) -> list[dict]:
     records: list[dict] = []
 
     for csv_name, label in [
-        ("politifact_fake.csv", LABEL_FAKE),
-        ("politifact_real.csv", LABEL_REAL),
+        (f"{prefix}_fake.csv", LABEL_FAKE),
+        (f"{prefix}_real.csv", LABEL_REAL),
     ]:
         path = raw_dir / csv_name
         if not path.exists():
-            raise FileNotFoundError(
-                f"Expected FakeNewsNet CSV not found: {path}\n"
-                "Download instructions: https://github.com/KaiDMML/FakeNewsNet"
-            )
+            if prefix in ("fakenewscorpus", "new_data") and Path("NEW_DATA/news_cleaned_2018_02_13.csv").exists():
+                from scripts.prepare_new_data import extract_fakenewscorpus
+                extract_fakenewscorpus("NEW_DATA/news_cleaned_2018_02_13.csv", raw_dir, 1000)
+            if not path.exists():
+                raise FileNotFoundError(
+                    f"Expected dataset CSV not found: {path}\n"
+                    "Ensure data extraction or download is complete."
+                )
 
         df = pd.read_csv(path)
         log.info(f"Loaded {len(df):,} rows from {csv_name}  (label={label})")
@@ -323,7 +330,8 @@ def get_loaders(
     Returns:
         ``(train_loader, val_loader, test_loader)``
     """
-    cache_path = Path(cfg.data.processed_dir) / "politifact_processed.pt"
+    dataset_name = getattr(cfg.data, "dataset", "politifact")
+    cache_path = Path(cfg.data.processed_dir) / f"{dataset_name}_processed.pt"
 
     # ------------------------------------------------------------------
     # Load or build processed samples
@@ -335,10 +343,10 @@ def get_loaders(
         )
         log.info(f"Loaded {len(samples):,} samples from cache.")
     else:
-        log.info("Cache not found — running full preprocessing pipeline…")
+        log.info(f"Cache not found for {dataset_name} — running full preprocessing pipeline…")
 
         # 1. Load raw records
-        raw_records = load_fakenewsnet(cfg.data.raw_dir)
+        raw_records = load_fakenewsnet(cfg.data.raw_dir, prefix=dataset_name)
 
         # 2. Initialise preprocessors
         tokenizer = Tokenizer(

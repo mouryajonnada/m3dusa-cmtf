@@ -32,6 +32,8 @@ ENV/
 # =============================================================================
 # Data
 # =============================================================================
+NEW_DATA/
+new_data/
 data/raw/*
 !data/raw/*.csv
 !data/raw/.gitkeep
@@ -45,6 +47,7 @@ results/logs/*
 !results/logs/.gitkeep
 results/checkpoints/*
 !results/checkpoints/.gitkeep
+results/parts_training/
 
 # =============================================================================
 # Model Checkpoints & Artefacts

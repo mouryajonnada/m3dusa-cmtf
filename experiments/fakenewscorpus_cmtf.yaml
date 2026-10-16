@@ -1,0 +1,57 @@
+# =============================================================================
+# Experiment: Cross-Modal Transformer Fusion on FakeNewsCorpus (NEW_DATA)
+# =============================================================================
+
+experiment:
+  name: fakenewscorpus_cmtf
+  description: "Cross-Modal Transformer Fusion on FakeNewsCorpus (NEW_DATA)"
+  seed: 42
+  fusion_method: cross_modal         # "late_fusion" | "cross_modal"
+
+data:
+  dataset: fakenewscorpus
+  raw_dir: data/raw
+  processed_dir: data/processed
+  splits: [0.60, 0.15, 0.25]         # train / val / test fractions
+  max_text_length: 128
+  graph:
+    edge_features: false
+
+model:
+  text_encoder: roberta-base         # HuggingFace model identifier
+  freeze_text_encoder: true
+  text_pooling: cls                  # "cls" | "mean"
+  gat:
+    num_layers: 2
+    num_heads: 4
+    hidden_dim: 256
+    dropout: 0.3
+    residual: true
+  fusion:
+    method: cross_modal              # "late_fusion" | "cross_modal"
+    num_heads: 8                     # multi-head cross-attention heads
+    num_layers: 2                    # stacked cross-attention layers
+    hidden_dim: 256                  # fusion & output dimension
+    dropout: 0.1
+    feedforward_dim: 512             # FFN intermediate dimension
+    bidirectional: true              # run both text→graph and graph→text
+  classifier:
+    hidden_dims: [128]
+    dropout: 0.3
+    activation: relu
+
+training:
+  epochs: 10
+  batch_size: 16
+  lr: 2.0e-4
+  head_lr_scale: 5                   # head LR = lr * head_lr_scale
+  weight_decay: 1.0e-4
+  scheduler: cosine
+  warmup_steps: 50
+  grad_clip: 1.0
+  early_stopping_patience: 4
+
+results:
+  output_dir: results/
+  save_best_model: true
+  log_every_n_steps: 10
