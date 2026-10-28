@@ -1,0 +1,8 @@
+{
+  "total_rows_read": 5445101,
+  "total_samples_trained": 61440,
+  "total_chunks_trained": 60,
+  "best_val_f1": 0.951976756750267,
+  "elapsed_seconds": 1538.1816275119781,
+  "current_file_idx": 3
+}

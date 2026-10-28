@@ -38,7 +38,7 @@ The table below summarizes model performance on the held-out test split (265 cla
 | **AUC-ROC** | **0.9404 ± 0.0017** | **0.9448 ± 0.0017** | **+0.0044** | +0.47% | $p = 0.0412$ | ✅ Significant ($p < 0.05$) |
 | **Cross-Entropy Loss** | **0.3258 ± 0.0029** | **0.3213 ± 0.0025** | **-0.0045** | -1.38% | $p = 0.1180$ | Not Significant ($p \ge 0.05$) |
 
-*Full CSV exported to: [`results/metrics/comparison.csv`](file:///c:/Users/jmmou/OneDrive/Desktop/Project/results/metrics/comparison.csv)*
+*Full CSV exported to: [`results/metrics/comparison.csv`](results/metrics/comparison.csv)*
 
 ---
 
@@ -62,7 +62,7 @@ In contrast, **CMTF** introduces token-level bidirectional interaction:
 * **Overfitting Control**: Peak validation performance for CMTF occurred at Epoch 4 (Val Acc: 89.24%, Val F1: 88.75%), where the best model checkpoint was safely saved and loaded for testing.
 
 ### 3.3 Latent Space Structure (UMAP Analysis)
-The UMAP projections (*saved to [`results/plots/umap_embeddings.png`](file:///c:/Users/jmmou/OneDrive/Desktop/Project/results/plots/umap_embeddings.png)*) demonstrate:
+The UMAP projections (*saved to [`results/plots/umap_embeddings.png`](results/plots/umap_embeddings.png)*) demonstrate:
 * **Baseline Latent Space**: Exhibits a noticeable overlap zone along the decision boundary, where ambiguous fake claims mix with real news articles.
 * **CMTF Latent Space**: Shows tighter intra-class clustering and improved margin separation between Fake (red) and Real (blue) distributions, validating that cross-modal fusion produces more discriminative representations.
 
@@ -72,8 +72,8 @@ The UMAP projections (*saved to [`results/plots/umap_embeddings.png`](file:///c:
 
 | Artifact | File Path | Description |
 | :--- | :--- | :--- |
-| **Metrics Comparison Table** | [`results/metrics/comparison.csv`](file:///c:/Users/jmmou/OneDrive/Desktop/Project/results/metrics/comparison.csv) | Machine-readable table comparing all test metrics |
-| **Performance Bar Chart** | [`results/plots/baseline_vs_cmtf_metrics.png`](file:///c:/Users/jmmou/OneDrive/Desktop/Project/results/plots/baseline_vs_cmtf_metrics.png) | 300 DPI publication-quality bar chart |
-| **UMAP Embeddings Plot** | [`results/plots/umap_embeddings.png`](file:///c:/Users/jmmou/OneDrive/Desktop/Project/results/plots/umap_embeddings.png) | 2D projection of fused latent representations |
-| **Baseline Checkpoint** | [`results/checkpoints/baseline_m3dusa/best_model.pt`](file:///c:/Users/jmmou/OneDrive/Desktop/Project/results/checkpoints/baseline_m3dusa/best_model.pt) | Saved PyTorch weights (518 MB) |
-| **CMTF Checkpoint** | [`results/checkpoints/cross_modal_fusion/best_model.pt`](file:///c:/Users/jmmou/OneDrive/Desktop/Project/results/checkpoints/cross_modal_fusion/best_model.pt) | Saved PyTorch weights (545 MB) |
+| **Metrics Comparison Table** | [`results/metrics/comparison.csv`](results/metrics/comparison.csv) | Machine-readable table comparing all test metrics |
+| **Performance Bar Chart** | [`results/plots/baseline_vs_cmtf_metrics.png`](results/plots/baseline_vs_cmtf_metrics.png) | 300 DPI publication-quality bar chart |
+| **UMAP Embeddings Plot** | [`results/plots/umap_embeddings.png`](results/plots/umap_embeddings.png) | 2D projection of fused latent representations |
+| **Baseline Checkpoint** | `results/checkpoints/baseline_m3dusa/best_model.pt` | Saved PyTorch weights (518 MB) |
+| **CMTF Checkpoint** | `results/checkpoints/cross_modal_fusion/best_model.pt` | Saved PyTorch weights (545 MB) |
