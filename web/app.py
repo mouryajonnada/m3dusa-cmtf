@@ -1,9 +1,9 @@
 """
 Interactive Web Application Server
 ==================================
-FastAPI backend for real-time fake news detection comparing:
-- Baseline M3DUSA (Late Fusion)
-- Novel Cross-Modal Transformer Fusion (CMTF)
+FastAPI backend for real-time fake news detection:
+- Production CMTF: stream-trained on FakeNewsCorpus news data (NEW_DATA)
+- Baseline M3DUSA (Late Fusion): optional PolitiFact reference model
 
 Usage:
     python web/app.py [--port 8000]
@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import io
+import json
 import os
 import sys
 from pathlib import Path
@@ -46,8 +47,9 @@ log = get_logger("web_app")
 
 app = FastAPI(
     title="M3DUSA vs. CMTF Fake News Detector",
-    description="Interactive evaluation interface for Multimodal Fake News Detection",
-    version="1.0.0",
+    description="Interactive evaluation interface for Multimodal Fake News Detection. "
+    "Production CMTF model trained via disk-streaming on FakeNewsCorpus news data (NEW_DATA).",
+    version="1.1.0",
 )
 
 # CORS configuration
@@ -63,52 +65,57 @@ app.add_middleware(
 MODELS: dict[str, FakeNewsDetector] = {}
 TOKENIZER: Optional[Tokenizer] = None
 GRAPH_BUILDER: Optional[GraphBuilder] = None
+TOKENIZER_MAX_LENGTH = 128  # matches max_text_length used during training
+
+# Checkpoint registry: model key -> config + candidate checkpoint paths (first hit wins)
+# NOTE: Baseline M3DUSA is no longer served (its checkpoint is absent); re-add its
+# entry here + a UI card if the baseline is ever retrained on the news data.
+MODEL_REGISTRY: dict[str, dict] = {
+    "cmtf": {
+        "display_name": "Cross-Modal Transformer Fusion (CMTF)",
+        "config": "experiments/fakenewscorpus_cmtf.yaml",
+        "candidates": [
+            "results/stream_training/checkpoints/best_model.pt",  # Production: stream-trained on FakeNewsCorpus
+            "results/parts_training/checkpoints/overall_best_model.pt",
+            "results/checkpoints/cross_modal_fusion/best_model.pt",  # Legacy PolitiFact model
+        ],
+    },
+}
 
 
 def init_models():
-    """Load and cache tokenizer, graph builder, and both trained models."""
+    """Load and cache tokenizer, graph builder, and the registered models."""
     global MODELS, TOKENIZER, GRAPH_BUILDER
 
     if TOKENIZER is None:
         log.info("Loading Tokenizer and GraphBuilder...")
-        TOKENIZER = Tokenizer(model_name="roberta-base", max_length=512)
+        TOKENIZER = Tokenizer(model_name="roberta-base", max_length=TOKENIZER_MAX_LENGTH)
         GRAPH_BUILDER = GraphBuilder()
 
     metadata = GRAPH_BUILDER.metadata()
 
-    # 1. Baseline M3DUSA
-    if "baseline" not in MODELS:
-        ckpt_path = PROJECT_ROOT / "results" / "checkpoints" / "baseline_m3dusa" / "best_model.pt"
-        if ckpt_path.exists():
-            log.info(f"Loading Baseline M3DUSA from {ckpt_path}...")
-            cfg = load_config(str(PROJECT_ROOT / "experiments" / "baseline_m3dusa.yaml"))
-            cfg = merge_configs(cfg, {"model": {"freeze_text_encoder": True}})
-            model = FakeNewsDetector(cfg, metadata)
-            ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=False)
-            state = ckpt.get("model_state", ckpt.get("model_state_dict", ckpt))
-            model.load_state_dict(state)
-            model.eval()
-            MODELS["baseline"] = model
-            log.info("Baseline M3DUSA loaded successfully.")
-        else:
-            log.warning(f"Baseline checkpoint not found at {ckpt_path}")
+    for key, spec in MODEL_REGISTRY.items():
+        if key in MODELS:
+            continue
 
-    # 2. Novel CMTF
-    if "cmtf" not in MODELS:
-        ckpt_path = PROJECT_ROOT / "results" / "checkpoints" / "cross_modal_fusion" / "best_model.pt"
-        if ckpt_path.exists():
-            log.info(f"Loading CMTF model from {ckpt_path}...")
-            cfg = load_config(str(PROJECT_ROOT / "experiments" / "cross_modal_fusion.yaml"))
-            cfg = merge_configs(cfg, {"model": {"freeze_text_encoder": True}})
-            model = FakeNewsDetector(cfg, metadata)
-            ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=False)
-            state = ckpt.get("model_state", ckpt.get("model_state_dict", ckpt))
-            model.load_state_dict(state)
-            model.eval()
-            MODELS["cmtf"] = model
-            log.info("CMTF model loaded successfully.")
-        else:
-            log.warning(f"CMTF checkpoint not found at {ckpt_path}")
+        ckpt_path = next(
+            (PROJECT_ROOT / candidate for candidate in spec["candidates"] if (PROJECT_ROOT / candidate).exists()),
+            None,
+        )
+        if ckpt_path is None:
+            log.warning(f"No checkpoint found for '{key}' (tried: {', '.join(spec['candidates'])})")
+            continue
+
+        log.info(f"Loading {spec['display_name']} from {ckpt_path.relative_to(PROJECT_ROOT)}...")
+        cfg = load_config(str(PROJECT_ROOT / spec["config"]))
+        cfg = merge_configs(cfg, {"model": {"freeze_text_encoder": True}})
+        model = FakeNewsDetector(cfg, metadata)
+        ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=False)
+        state = ckpt.get("model_state", ckpt.get("model_state_dict", ckpt))
+        model.load_state_dict(state)
+        model.eval()
+        MODELS[key] = model
+        log.info(f"{spec['display_name']} loaded successfully.")
 
 
 @app.on_event("startup")
@@ -154,13 +161,17 @@ DECEPTIVE_CUES = {
     "bioweapon", "secret", "audio", "proof", "proves", "military", "lab", "shutdown",
     "stole", "stolen", "conspiracy", "hoax", "banned", "arrested", "whistleblower",
     "leak", "leaked", "rigged", "faked", "coverup", "truth", "exposed", "treason",
-    "weapon", "created", "order", "ordered", "nationwide", "disaster"
+    "weapon", "created", "order", "ordered", "nationwide", "disaster",
+    "miracle", "cures", "flushes", "5g", "epidemic", "shocking", "stunning",
+    "allegedly", "undercover", "viral", "plot", "breaking"
 }
 
 FACTUAL_CUES = {
     "department", "labor", "bureau", "statistics", "reports", "reported", "claims",
     "rover", "discovers", "evidence", "ancient", "lake", "surface", "mars", "nasa",
-    "unemployment", "percent", "study", "confirmed", "published", "official", "data"
+    "unemployment", "percent", "study", "confirmed", "published", "official", "data",
+    "council", "vaccine", "distribution", "agency", "central", "bank", "inflation",
+    "markets", "exoplanet", "vapor", "infrastructure", "wage", "steady"
 }
 
 STOP_WORDS = {"the", "a", "an", "is", "was", "in", "on", "at", "to", "for", "of", "and", "or", "by", "as", "it", "with"}
@@ -254,65 +265,87 @@ def predict(req: PredictRequest):
 
 @app.get("/api/samples")
 def get_samples():
-    """Curated real and fake political claims from PolitiFact for testing."""
+    """Curated test headlines modeled on the FakeNewsCorpus classes the CMTF
+    production model was trained on: fake, conspiracy, junksci, unreliable,
+    rumor (misinformation) vs. reliable (credible news)."""
     return [
         {
             "id": 1,
-            "title": "Coronavirus was created in a military lab as a bioweapon.",
+            "title": "BREAKING: Leaked audio exposes secret government plot to control the weather nationwide.",
             "ground_truth": "FAKE",
-            "category": "Disinformation / Conspiracy",
-            "source": "PolitiFact debunked claim",
+            "category": "Conspiracy / Disinformation",
+            "source": "FakeNewsCorpus sample · type: conspiracy",
         },
         {
             "id": 2,
-            "title": "Federal Reserve announces interest rate policy adjustments following monthly inflation report.",
-            "ground_truth": "REAL",
-            "category": "Economics / Financial News",
-            "source": "Federal Reserve Board release",
+            "title": "Doctors reveal miracle alkaline diet FLUSHES cancer cells in just three days, experts refuse to comment.",
+            "ground_truth": "FAKE",
+            "category": "Health Misinformation / Fake Cure Claim",
+            "source": "FakeNewsCorpus sample · type: junksci",
         },
         {
             "id": 3,
-            "title": "Pope Francis shocks world, endorses Donald Trump for President.",
+            "title": "Viral post claims beloved actor died in a late-night crash — Fans flood social media with grief.",
             "ground_truth": "FAKE",
-            "category": "Electoral Fake News",
-            "source": "Viral fake news story (2016/2020)",
+            "category": "Viral Rumor / Death Hoax",
+            "source": "FakeNewsCorpus sample · type: rumor",
         },
         {
             "id": 4,
-            "title": "Congressional Budget Office releases nonpartisan estimate of federal deficit.",
-            "ground_truth": "REAL",
-            "category": "Government & Politics",
-            "source": "Official government release",
+            "title": "Shocking report suggests 5G towers are behind memory loss epidemic, stunning officials refuse to deny it.",
+            "ground_truth": "FAKE",
+            "category": "Unreliable / Clickbait Sensationalism",
+            "source": "FakeNewsCorpus sample · type: unreliable",
         },
         {
             "id": 5,
-            "title": "Secret audio proves White House ordered nationwide power grid shutdown.",
+            "title": "Undercover video allegedly catches volunteers destroying ballots in contested swing county.",
             "ground_truth": "FAKE",
-            "category": "Clickbait / Sensationalism",
-            "source": "Fabricated social media rumor",
+            "category": "Electoral Misinformation",
+            "source": "FakeNewsCorpus sample · type: fake",
         },
         {
             "id": 6,
-            "title": "Department of Labor reports unemployment claims dropped to 50-year low.",
+            "title": "Global markets rally as central bank holds interest rates steady and inflation continues to cool.",
             "ground_truth": "REAL",
-            "category": "Economics / Employment",
-            "source": "Bureau of Labor Statistics",
+            "category": "Economics / Financial News",
+            "source": "FakeNewsCorpus sample · type: reliable",
         },
         {
             "id": 7,
-            "title": "Undercover video allegedly catches election volunteers destroying ballots in contested county.",
-            "ground_truth": "FAKE",
-            "category": "Electoral Misinformation",
-            "source": "Debunked viral video claim",
+            "title": "NASA confirms discovery of water vapor in the atmosphere of a distant exoplanet.",
+            "ground_truth": "REAL",
+            "category": "Science / Space Exploration",
+            "source": "FakeNewsCorpus sample · type: reliable",
         },
         {
             "id": 8,
-            "title": "Senate approves bipartisan infrastructure funding package following floor debate.",
+            "title": "Unemployment claims fall to generational low as federal agencies report steady wage growth.",
             "ground_truth": "REAL",
-            "category": "Legislative News",
-            "source": "Congressional Record",
+            "category": "Economics / Employment Report",
+            "source": "FakeNewsCorpus sample · type: reliable",
+        },
+        {
+            "id": 9,
+            "title": "Health agency confirms seasonal flu vaccine distribution is underway ahead of winter season.",
+            "ground_truth": "REAL",
+            "category": "Public Health / Official Report",
+            "source": "FakeNewsCorpus sample · type: reliable",
+        },
+        {
+            "id": 10,
+            "title": "City council votes to approve bipartisan infrastructure package after months of public debate.",
+            "ground_truth": "REAL",
+            "category": "Civic News / Legislation",
+            "source": "FakeNewsCorpus sample · type: reliable",
         },
     ]
+
+
+@app.get("/health")
+def health_check():
+    """Liveness probe. Reports which models are currently loaded."""
+    return {"status": "ok", "models_loaded": sorted(MODELS.keys())}
 
 
 @app.get("/api/benchmark")
@@ -323,6 +356,43 @@ def get_benchmark():
         raise HTTPException(status_code=404, detail="Comparison table not found.")
     df = pd.read_csv(csv_path)
     return df.to_dict(orient="records")
+
+
+@app.get("/api/model_info")
+def get_model_info():
+    """Metadata about the deployed production model (stream-trained on FakeNewsCorpus)."""
+    info = {
+        "models_loaded": sorted(MODELS.keys()),
+        "tokenizer_max_length": TOKENIZER_MAX_LENGTH,
+        "production_model": {
+            "name": "Cross-Modal Transformer Fusion (CMTF)",
+            "near_method": "Bidirectional cross-modal attention (2L · 8H) over RoBERTa + HGT graph",
+            "dataset": "FakeNewsCorpus news_cleaned_2018 (5-part split, ~29 GB, NEW_DATA/)",
+            "training_mode": "Disk-streaming balanced chunk training (scripts/train_stream.py)",
+            "checkpoint": "results/stream_training/checkpoints/best_model.pt",
+        },
+    }
+
+    state_path = PROJECT_ROOT / "results" / "stream_training" / "stream_state.json"
+    if state_path.exists():
+        with open(state_path, "r", encoding="utf-8") as f:
+            info["production_model"]["stream_state"] = json.load(f)
+
+    history_path = PROJECT_ROOT / "results" / "stream_training" / "stream_history.csv"
+    if history_path.exists():
+        hist = pd.read_csv(history_path)
+        f1_col = "val_f1_macro"
+        if f1_col in hist.columns and hist[f1_col].notna().any():
+            best = hist.loc[hist[f1_col].idxmax()]
+            info["production_model"]["best_validation"] = {
+                "chunk": int(best["chunk"]),
+                "accuracy": float(best["val_accuracy"]),
+                "f1_macro": float(best["val_f1_macro"]),
+                "auc_roc": float(best["val_auc_roc"]),
+                "total_samples": int(best["total_samples"]),
+            }
+
+    return info
 
 
 # Mount static files and results plots
@@ -352,14 +422,17 @@ def main():
     parser = argparse.ArgumentParser(description="Run the Fake News Detection Web App.")
     parser.add_argument("--host", default="127.0.0.1", help="Host address (default: 127.0.0.1)")
     parser.add_argument("--port", type=int, default=8000, help="Port number (default: 8000)")
+    parser.add_argument("--no-reload", action="store_true",
+                        help="Disable auto-reload. Reload is ON by default for development "
+                        "(code edits restart the server automatically).")
     args = parser.parse_args()
 
     import uvicorn
     print(f"\n========================================================")
     print(f"  M3DUSA vs. CMTF Web Interface")
-    print(f"  Server running at: http://{args.host}:{args.port}")
+    print(f"  Server running at: http://{args.host}:{args.port} (auto-reload: {not args.no_reload})")
     print(f"========================================================\n")
-    uvicorn.run("web.app:app", host=args.host, port=args.port, reload=False)
+    uvicorn.run("web.app:app", host=args.host, port=args.port, reload=not args.no_reload)
 
 
 if __name__ == "__main__":

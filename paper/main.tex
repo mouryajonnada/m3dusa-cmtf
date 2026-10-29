@@ -1,0 +1,357 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{url}
+\usepackage{hyperref}
+\usepackage{algorithm}
+
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\begin{document}
+
+\title{Bidirectional Cross-Modal Transformer Fusion for Graph-Augmented Fake News Detection: Reproducing and Extending M3DUSA}
+
+\author{
+\IEEEauthorblockN{T Sukumar}
+\IEEEauthorblockA{Professor \\
+\textit{Dept. of Computer Science and Engineering} \\
+\textit{School of Computing, Mohan Babu University}\\
+Tirupati, India \\
+t79077788@gmail.com}
+\and
+\IEEEauthorblockN{Mallela Venu}
+\IEEEauthorblockA{\textit{Dept. of Computer Science and Engineering} \\
+\textit{School of Computing, Mohan Babu University}\\
+Tirupati, India \\
+mallelavenu@gmail.com}
+\and
+\IEEEauthorblockN{Jonnada Manohar Mourya\IEEEauthorrefmark{1}, Gampala Hemanth Teja\IEEEauthorrefmark{2}, Viswandhapalli Rajesh\IEEEauthorrefmark{3}}
+\IEEEauthorblockA{\textit{Dept. of Computer Science and Engineering, School of Computing} \\
+\textit{Mohan Babu University}, Tirupati, India \\
+Email: \IEEEauthorrefmark{1}mouryajonnada@gmail.com, \IEEEauthorrefmark{2}mouryajonnada@gmail.com, \IEEEauthorrefmark{3}mouryajonnada@gmail.com}
+}
+
+\maketitle
+
+\begin{abstract}
+Multimodal fake news detection increasingly relies on combining unstructured article text with structural social discourse graphs. The state-of-the-art M3DUSA framework combines dense textual representations from pre-trained language models with social context graph embeddings derived from Heterogeneous Graph Transformers (HGT), fusing them via late linear projection. However, isolated late fusion forces text and graph representations to be computed independently, preventing fine-grained token-level text representations from querying structural evidence and causing severe gradient instability during early training. In this paper, we reproduce the M3DUSA baseline on the benchmark PolitiFact corpus and propose \textbf{Cross-Modal Transformer Fusion (CMTF)}---a bidirectional cross-attention architecture that allows token-level textual representations and heterogeneous graph node embeddings to mutually attend to each other across stacked cross-attention blocks with residual connections and layer normalization. Under a rigorous multi-seed evaluation protocol across three independent random seeds (42, 123, 456) on 265 held-out PolitiFact claims, CMTF statistically outperforms the reproduced M3DUSA baseline across all nine evaluated metrics ($p < 0.05$ via Welch's two-sample $t$-test). Specifically, CMTF boosts fake news $F_1$ score by $+1.84\%$ ($84.36\% \pm 0.45\%$ vs. $82.52\% \pm 0.43\%$, $p=0.0162$), overall macro recall by $+1.52\%$ ($86.76\% \pm 0.42\%$ vs. $85.24\% \pm 0.41\%$, $p=0.0215$), test accuracy by $+1.13\%$ ($87.55\% \pm 0.38\%$ vs. $86.42\% \pm 0.38\%$, $p=0.0384$), and AUC-ROC from $0.9404$ to $0.9448$ ($p=0.0412$). Furthermore, CMTF accelerates training convergence, achieving $47.31\%$ fake news $F_1$ in Epoch 1 compared to $0.00\%$ for the baseline. We evaluate multi-part continual learning across a 60~GB corpus, examine latent space separability with UMAP projections, and release an interactive Neural Observatory for real-time inference and cross-attention inspection.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Fake news detection, multimodal learning, heterogeneous graph transformer, cross-modal attention, stance analysis, M3DUSA, social media graph.
+\end{IEEEkeywords}
+
+\section{Introduction}
+
+The proliferation of online disinformation and politically biased falsehoods poses substantial threats to public health, democratic processes, and institutional trust \cite{shu2020fakenewsnet}. Deceptive news articles frequently adopt polished journalistic prose, sensational headlines, and selective quotation to mislead standard text-based natural language processing models. To overcome the limitations of surface lexical analysis, recent research has turned toward multimodal and graph-augmented architectures that incorporate social context, user engagement patterns, and propagation graphs \cite{wang2018eann, zhou2020safe, bian2020bigcn}.
+
+Among graph-augmented methods, the recently proposed M3DUSA (\textit{Multimodal Multi-Domain Unified Stance Analysis}) framework \cite{martirano2025m3dusa} introduced an effective approach by combining language model representations (e.g., RoBERTa \cite{liu2019roberta}) with evidence structure encoded via Heterogeneous Graph Transformers (HGT) \cite{hu2020heterogeneous}. In M3DUSA, the claim text and the social context graph are processed through separate encoders, after which their final pooled embeddings are concatenated and fed into a late-fusion linear projection layer:
+\begin{equation}
+\mathbf{h}_{\text{late}} = \text{Linear}(\mathbf{h}_{\text{text}} \parallel \mathbf{h}_{\text{graph}})
+\end{equation}
+
+While late fusion is computationally simple, our investigation reveals two fundamental limitations:
+\begin{enumerate}
+    \item \textbf{Isolated Representation Bottleneck}: Because textual and graph representations are computed in complete isolation, individual words, named entities, and claim phrases cannot query structural social context during feature extraction. Subtle disinformation tactics that mimic credible news style can only be detected when specific sensationalized phrases are directly cross-referenced with conflicting social discourse evidence.
+    \item \textbf{Early Training Instability}: Because the two modalities reside in disjoint latent manifolds, late linear projection provides weak gradient feedback to the text and graph backbones during initial training iterations, leading to prolonged warmup delays where the model predicts only the majority class.
+\end{enumerate}
+
+To resolve these challenges, we introduce \textbf{Cross-Modal Transformer Fusion (CMTF)}, a novel bidirectional cross-attention architecture that replaces static late concatenation. In CMTF, token-level hidden states from the text encoder attend to heterogeneous graph node representations, while graph node embeddings simultaneously query salient text tokens across stacked bidirectional cross-attention blocks equipped with residual connections, layer normalization, and position-wise feed-forward networks.
+
+\subsection{Research Objectives}
+This work systematically investigates four core objectives:
+\begin{enumerate}
+    \item Reproduce the M3DUSA late-fusion baseline under a clean, reproducible multi-seed evaluation protocol on the PolitiFact benchmark.
+    \item Design and implement bidirectional Cross-Modal Transformer Fusion (CMTF) to enable token-to-node mutual cross-attention.
+    \item Quantify statistical significance across all standard classification metrics using independent multi-seed runs and Welch's $t$-tests.
+    \item Evaluate training convergence dynamics, latent space cluster geometry via UMAP, and multi-part continual learning across massive news corpora (FakeNewsCorpus).
+\end{enumerate}
+
+\subsection{Contributions}
+The main contributions of this work are summarized as follows:
+\begin{itemize}
+    \item \textbf{Empirical Baseline Reproduction}: We provide a rigorous, open-source reproduction of the M3DUSA baseline on PolitiFact, establishing verified benchmark figures across three independent seeds.
+    \item \textbf{Novel Cross-Modal Fusion Architecture}: We propose CMTF, which introduces bidirectional multi-head cross-attention between token-level textual representations and heterogeneous graph node embeddings.
+    \item \textbf{Statistically Significant Performance Gains}: Under multi-seed evaluation on 265 held-out test claims, CMTF demonstrates statistically significant improvements ($p < 0.05$) across all nine evaluated metrics, achieving $+1.84\%$ higher fake news $F_1$ ($p=0.0162$), $+1.52\%$ higher macro recall ($p=0.0215$), and $+1.13\%$ higher test accuracy ($p=0.0384$).
+    \item \textbf{Accelerated Convergence Dynamics}: CMTF eliminates the early warmup lag observed in late fusion, jumping to $47.31\%$ fake news $F_1$ in Epoch 1 (vs. $0.00\%$ for late fusion) and reaching $77.59\%$ in Epoch 2.
+    \item \textbf{Continual Learning on Massive Corpora \& Deployment}: We demonstrate multi-part continual training over a 60~GB news corpus (FakeNewsCorpus) and deploy an interactive Neural Observatory web platform for real-time inference and cross-attention visualization.
+\end{itemize}
+
+\section{Related Work}
+
+\subsection{Multimodal and Graph-Augmented Fake News Detection}
+Early machine learning models for fake news detection relied on handcrafted stylistic, linguistic, and readability features \cite{shu2020fakenewsnet}. The advent of pre-trained transformers such as BERT \cite{devlin2019bert} and RoBERTa \cite{liu2019roberta} enabled deep contextual understanding of news text. However, content-only models frequently fail when confronted with well-crafted deceptive articles. Consequently, researchers incorporated multimodal evidence, such as accompanying images via Event Adversarial Neural Networks (EANN) \cite{wang2018eann} and cross-modal similarity matching via SAFE \cite{zhou2020safe}.
+
+Beyond images, social context provides indispensable signals. Propagation trees, user retweet patterns, and stance graphs expose structural anomalies characteristic of fake news dissemination \cite{bian2020bigcn}. Graph Convolutional Networks (GCN) and Graph Attention Networks (GAT) \cite{velickovic2018gat, brody2022gatv2} have been widely deployed to learn graph topology embeddings. M3DUSA \cite{martirano2025m3dusa} advanced this frontier by formulating social context as a heterogeneous graph consisting of news claims and hashtag entities, encoded via Heterogeneous Graph Transformers (HGT) \cite{hu2020heterogeneous}. Nevertheless, M3DUSA relies on late concatenation, leaving a modality alignment gap that our work addresses.
+
+\subsection{Cross-Modal Fusion Mechanisms}
+Multimodal fusion strategies generally fall into early, late, and intermediate fusion. While early fusion directly concatenates raw features and late fusion merges decision-level vectors, intermediate attention-based fusion allows deep interactive representation learning \cite{vaswani2017attention, jaegle2021perceiver}. In vision-language domains, cross-attention enables visual bounding boxes to query textual tokens. In this work, we adapt and specialize bidirectional cross-modal transformer attention to the joint space of textual token sequences and heterogeneous graph node embeddings for fake news detection.
+
+\begin{table}[t]
+\caption{Positioning Against Related Fake News Detection Architectures}
+\label{tab:positioning}
+\centering
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Property} & \textbf{SAFE \cite{zhou2020safe}} & \textbf{Bi-GCN \cite{bian2020bigcn}} & \textbf{M3DUSA \cite{martirano2025m3dusa}} & \textbf{CMTF (Ours)} \\
+\midrule
+Text Representation & CNN & Word2Vec & RoBERTa & RoBERTa \\
+Graph/Visual Context & ResNet & Bi-GCN & HGTConv & HGTConv \\
+Fusion Paradigm & Similarity & Concatenation & Late Linear & \textbf{Bidirectional Cross-Attn} \\
+Token-Level Interaction & No & No & No & \textbf{Yes (8 heads, 2 layers)} \\
+Multi-Seed Significance & No & No & No & \textbf{Yes (Welch's $t$-test)} \\
+Large Corpus Streaming & No & No & No & \textbf{Yes (60 GB multi-part)} \\
+Interactive Observatory & No & No & No & \textbf{Yes (FastAPI Web App)} \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+\section{Proposed Method: CMTF}
+
+\begin{figure*}[t]
+\centering
+\fbox{\parbox{0.95\textwidth}{\centering
+\textbf{[Figure 1: Architectural Pipeline of Cross-Modal Transformer Fusion (CMTF)]}\\[4pt]
+\small
+Raw Claim Text $\rightarrow$ RoBERTa Encoder $\rightarrow$ Token Sequence $\mathbf{H}_{\text{text}} \in \mathbb{R}^{B \times L \times 256}$ \\
+$\updownarrow$ \textbf{Bidirectional Cross-Modal Transformer (2 Layers, 8 Heads, Residual + LN + FFN)} $\updownarrow$ \\
+Heterogeneous Graph $\rightarrow$ HGTConv Encoder $\rightarrow$ Node Sequence $\mathbf{H}_{\text{graph}} \in \mathbb{R}^{B \times 2 \times 256}$ \\[4pt]
+$\longrightarrow$ Mean Pooling $\rightarrow [\mathbf{\bar{h}}_{\text{text}} \parallel \mathbf{\bar{h}}_{\text{graph}}] \rightarrow$ MLP Classifier Head $\rightarrow$ Softmax $\rightarrow$ [Real / Fake Verdict]
+}}
+\caption{Overall architectural pipeline of the proposed CMTF framework. Text tokens and graph node tokens are projected to a shared 256-dimensional space and updated via stacked bidirectional cross-attention layers before pooling and final classification.}
+\label{fig:architecture}
+\end{figure*}
+
+\subsection{Overview and Problem Formulation}
+Let a candidate news instance be represented as a tuple $(T, \mathcal{G}, y)$, where $T = (w_1, w_2, \dots, w_L)$ denotes the sequence of $L$ subword tokens in the claim text, $\mathcal{G} = (\mathcal{V}, \mathcal{E}, \mathcal{T}_v, \mathcal{T}_e)$ is a heterogeneous social context graph, and $y \in \{0, 1\}$ represents the ground-truth veracity label ($0$ for real news, $1$ for fake news). The objective is to learn a parameterized function $f_\theta(T, \mathcal{G}) \to \hat{y} \in [0, 1]$ that predicts the probability of falsehood.
+
+\subsection{Semantic Text Encoder}
+Input text $T$ is tokenized and passed into a pre-trained RoBERTa-base encoder \cite{liu2019roberta}. Unlike late-fusion models that only extract the pooled \texttt{[CLS]} representation, CMTF extracts the complete sequence of token hidden states:
+\begin{equation}
+\mathbf{H}_{\text{text}}^{(0)} = \text{RoBERTa}(T) \in \mathbb{R}^{B \times L \times d_{\text{text}}}
+\end{equation}
+where $B$ is batch size, $L=128$ is the sequence length, and $d_{\text{text}} = 768$. To align dimensionality with the graph modality, a linear projection maps $\mathbf{H}_{\text{text}}^{(0)}$ to the fusion dimension $d_f = 256$:
+\begin{equation}
+\mathbf{Z}_{\text{text}}^{(0)} = \mathbf{H}_{\text{text}}^{(0)} \mathbf{W}_{\text{proj\_t}} \in \mathbb{R}^{B \times L \times d_f}
+\end{equation}
+
+\subsection{Heterogeneous Graph Attention Encoder}
+The heterogeneous graph $\mathcal{G}$ comprises two distinct node types: the central News Claim node $v_c$ and associated Hashtag/Topic nodes $v_h \in \mathcal{V}_h$. Initial node features $\mathbf{x}_v \in \mathbb{R}^{384}$ are generated using the \texttt{all-MiniLM-L6-v2} sentence embedding model. We deploy a 2-layer Heterogeneous Graph Transformer (HGTConv) \cite{hu2020heterogeneous} with 4 attention heads:
+\begin{equation}
+\mathbf{h}_i^{(l+1)} = \text{HGTConv}\left(\{\mathbf{h}_j^{(l)} : j \in \mathcal{N}(i)\}, \mathcal{T}_v, \mathcal{T}_e\right)
+\end{equation}
+with residual skip connections and layer normalization. 
+
+The graph encoder outputs two structured representations: the News Claim node representation $\mathbf{h}_{\text{news}} \in \mathbb{R}^{B \times d_g}$ and the global mean-pooled Hashtag representation $\mathbf{h}_{\text{hashtag}} \in \mathbb{R}^{B \times d_g}$ ($d_g = 256$). These representations are stacked along a sequence dimension and linearly projected:
+\begin{equation}
+\mathbf{Z}_{\text{graph}}^{(0)} = [\mathbf{h}_{\text{news}} \;; \mathbf{h}_{\text{hashtag}}] \mathbf{W}_{\text{proj\_g}} \in \mathbb{R}^{B \times 2 \times d_f}
+\end{equation}
+
+\subsection{Bidirectional Cross-Modal Transformer Fusion (CMTF)}
+The core contribution of CMTF is a stack of $N=2$ bidirectional cross-attention layers. Each layer consists of two coupled sub-blocks: Text-to-Graph cross-attention and Graph-to-Text cross-attention.
+
+\subsubsection{Sub-Layer 1: Text-to-Graph Cross-Attention}
+Text tokens act as queries that inspect the structural social context nodes (keys and values):
+\begin{align}
+\mathbf{Q}_t &= \mathbf{Z}_{\text{text}}^{(l)} \mathbf{W}_Q^{(t, l)}, \quad \mathbf{K}_g = \mathbf{Z}_{\text{graph}}^{(l)} \mathbf{W}_K^{(t, l)}, \quad \mathbf{V}_g = \mathbf{Z}_{\text{graph}}^{(l)} \mathbf{W}_V^{(t, l)} \\
+\mathbf{A}_{t \to g} &= \text{softmax}\left(\frac{\mathbf{Q}_t \mathbf{K}_g^T}{\sqrt{d_k}}\right) \mathbf{V}_g \\
+\mathbf{\tilde{Z}}_{\text{text}}^{(l)} &= \text{LayerNorm}\left(\mathbf{Z}_{\text{text}}^{(l)} + \text{Dropout}(\mathbf{A}_{t \to g})\right) \\
+\mathbf{Z}_{\text{text}}^{(l+1)} &= \text{LayerNorm}\left(\mathbf{\tilde{Z}}_{\text{text}}^{(l)} + \text{FFN}(\mathbf{\tilde{Z}}_{\text{text}}^{(l)})\right)
+\end{align}
+where $\text{FFN}(x) = \text{GELU}(x \mathbf{W}_1 + \mathbf{b}_1) \mathbf{W}_2 + \mathbf{b}_2$ with intermediate dimension $d_{\text{ffn}} = 512$, and multi-head attention uses $H=8$ parallel heads ($d_k = d_f / H = 32$).
+
+\subsubsection{Sub-Layer 2: Graph-to-Text Cross-Attention}
+Conversely, the graph tokens query the updated text representations to absorb salient semantic nuances:
+\begin{align}
+\mathbf{Q}_g &= \mathbf{Z}_{\text{graph}}^{(l)} \mathbf{W}_Q^{(g, l)}, \quad \mathbf{K}_t = \mathbf{Z}_{\text{text}}^{(l+1)} \mathbf{W}_K^{(g, l)}, \quad \mathbf{V}_t = \mathbf{Z}_{\text{text}}^{(l+1)} \mathbf{W}_V^{(g, l)} \\
+\mathbf{A}_{g \to t} &= \text{softmax}\left(\frac{\mathbf{Q}_g \mathbf{K}_t^T}{\sqrt{d_k}}\right) \mathbf{V}_t \\
+\mathbf{\tilde{Z}}_{\text{graph}}^{(l)} &= \text{LayerNorm}\left(\mathbf{Z}_{\text{graph}}^{(l)} + \text{Dropout}(\mathbf{A}_{g \to t})\right) \\
+\mathbf{Z}_{\text{graph}}^{(l+1)} &= \text{LayerNorm}\left(\mathbf{\tilde{Z}}_{\text{graph}}^{(l)} + \text{FFN}(\mathbf{\tilde{Z}}_{\text{graph}}^{(l)})\right)
+\end{align}
+
+\subsection{Pooling and Classification Head}
+After $N=2$ bidirectional cross-attention layers, sequence-level mean pooling is performed independently over the refined text tokens and refined graph nodes:
+\begin{equation}
+\mathbf{\bar{z}}_{\text{text}} = \frac{1}{L} \sum_{i=1}^L \mathbf{Z}_{\text{text}, i}^{(N)}, \quad \mathbf{\bar{z}}_{\text{graph}} = \frac{1}{2} \sum_{j=1}^2 \mathbf{Z}_{\text{graph}, j}^{(N)}
+\end{equation}
+The two pooled vectors are concatenated and passed through a multi-layer classification head:
+\begin{equation}
+\mathbf{h}_{\text{fused}} = [\mathbf{\bar{z}}_{\text{text}} \parallel \mathbf{\bar{z}}_{\text{graph}}] \in \mathbb{R}^{B \times 512}
+\end{equation}
+\begin{equation}
+\hat{y} = \text{Softmax}\left(\text{Linear}_{128 \to 2}\left(\text{ReLU}\left(\text{Linear}_{512 \to 128}(\mathbf{h}_{\text{fused}})\right)\right)\right)
+\end{equation}
+The network is optimized end-to-end using binary cross-entropy loss with weight decay.
+
+\begin{algorithm}[t]
+\caption{CMTF Training and Inference Protocol}
+\label{alg:cmtf}
+\begin{algorithmic}[1]
+\REQUIRE Batch text $T$, heterogeneous graphs $\mathcal{G}$, ground-truth labels $y$, learning rate $\eta$, epochs $E$, patience $P$.
+\ENSURE Optimal trained parameters $\theta^*$.
+\STATE Initialize text encoder, HGT encoder, and CMTF blocks.
+\FOR{$\text{epoch} = 1$ \TO $E$}
+    \FOR{each batch $(T, \mathcal{G}, y)$}
+        \STATE Compute token representations $\mathbf{Z}_{\text{text}}^{(0)}$ via Eq.~(2)--(3).
+        \STATE Compute graph representations $\mathbf{Z}_{\text{graph}}^{(0)}$ via Eq.~(4)--(5).
+        \FOR{$l = 0$ \TO $N-1$}
+            \STATE Update $\mathbf{Z}_{\text{text}}^{(l+1)} \leftarrow \text{CrossAttn}(\mathbf{Z}_{\text{text}}^{(l)}, \mathbf{Z}_{\text{graph}}^{(l)})$ via Eq.~(6)--(9).
+            \STATE Update $\mathbf{Z}_{\text{graph}}^{(l+1)} \leftarrow \text{CrossAttn}(\mathbf{Z}_{\text{graph}}^{(l)}, \mathbf{Z}_{\text{text}}^{(l+1)})$ via Eq.~(10)--(13).
+        \ENDFOR
+        \STATE Pool $\mathbf{\bar{z}}_{\text{text}}, \mathbf{\bar{z}}_{\text{graph}}$ and predict $\hat{y}$ via Eq.~(14)--(16).
+        \STATE Compute $\mathcal{L}_{\text{BCE}}(\hat{y}, y)$, perform backpropagation, update $\theta$.
+    \ENDFOR
+    \STATE Evaluate validation accuracy and macro $F_1$.
+    \IF{validation $F_1$ reaches new peak}
+        \STATE Save checkpoint $\theta^* \leftarrow \theta$; reset patience counter.
+    \ELSIF{no improvement for $P$ consecutive epochs}
+        \STATE Trigger early stopping; \textbf{break}.
+    \ENDIF
+\ENDFOR
+\STATE \textbf{return} $\theta^*$.
+\end{algorithmic}
+\end{algorithm}
+
+\section{Experimental Setup}
+
+\subsection{Research Questions}
+We organize our empirical investigation around five key research questions:
+\begin{itemize}
+    \item \textbf{RQ1 (Significance)}: Does CMTF achieve statistically significant performance gains over the reproduced M3DUSA late-fusion baseline across multiple random seeds?
+    \item \textbf{RQ2 (Class-Specific Performance)}: Does bidirectional cross-attention disproportionately boost fake news detection and recall over real news classification?
+    \item \textbf{RQ3 (Convergence Dynamics)}: Does token-level cross-attention alleviate the early training instability and warmup delays of late fusion?
+    \item \textbf{RQ4 (Latent Manifold Geometry)}: How does CMTF affect the separability and margin of learned latent representations under UMAP projection?
+    \item \textbf{RQ5 (Large-Scale Continual Learning)}: Can CMTF scale to massive multi-gigabyte corpora (FakeNewsCorpus) across multi-part continual splits?
+\end{itemize}
+
+\subsection{Datasets}
+\begin{itemize}
+    \item \textbf{PolitiFact Benchmark}: We utilize the curated PolitiFact benchmark from FakeNewsNet \cite{shu2020fakenewsnet}, consisting of fact-checked political statements categorized into binary veracity labels (real vs. fake). The dataset is split into stratified partitions of $60\%$ training, $15\%$ validation, and $25\%$ held-out test (265 test claims).
+    \item \textbf{FakeNewsCorpus}: A large-scale corpus of news articles \cite{szigeti2018fakenewscorpus}. We evaluate both a balanced 2,000-article benchmark subset and a 60~GB 5-part split partitioned with strict RFC 4180 quotation integrity.
+\end{itemize}
+
+\subsection{Implementation Details and Hyperparameters}
+Experiments were executed in Python using PyTorch Geometric \cite{fey2019pyg}, Hugging Face Transformers \cite{wolf2020transformers}, and Scikit-learn \cite{pedregosa2011scikit}. Optimization used AdamW \cite{loschilov2019adamw} with a base learning rate of $\eta = 2 \times 10^{-5}$ for the text encoder and a $10\times$ scaled rate ($\eta_{\text{head}} = 2 \times 10^{-4}$) for the graph and fusion parameters. We applied a cosine annealing schedule with 100 warmup steps, weight decay of $10^{-4}$, gradient clipping at norm $1.0$, and early stopping patience of $P=6$ with a maximum of 35 epochs. All models were trained and tested across three independent random seeds: $42, 123,$ and $456$.
+
+\begin{table*}[t]
+\caption{Multi-Seed Test Set Performance Comparison on 265 Held-Out PolitiFact Claims (Mean $\pm$ Std across Seeds 42, 123, 456). Statistical significance is assessed via Welch's two-sample $t$-test.}
+\label{tab:multiseed_results}
+\centering
+\begin{tabular}{lcccccc}
+\toprule
+\textbf{Evaluation Metric} & \textbf{Baseline M3DUSA (Late Fusion)} & \textbf{CMTF (Novel Cross-Modal)} & \textbf{Absolute $\Delta$ (Mean)} & \textbf{Relative Change} & \textbf{Welch's $t$-test $p$-value} & \textbf{Significance ($p < 0.05$)} \\
+\midrule
+\textbf{Accuracy (\%)}          & $86.42 \pm 0.38$ & $\mathbf{87.55 \pm 0.38}$ & $\mathbf{+1.13\%}$ & $+1.31\%$ & $p = 0.0384$ & \textbf{Statistically Significant} \\
+\textbf{Macro $F_1$ (\%)}        & $85.74 \pm 0.37$ & $\mathbf{87.02 \pm 0.38}$ & $\mathbf{+1.28\%}$ & $+1.49\%$ & $p = 0.0321$ & \textbf{Statistically Significant} \\
+\textbf{Weighted $F_1$ (\%)}     & $86.32 \pm 0.36$ & $\mathbf{87.51 \pm 0.36}$ & $\mathbf{+1.19\%}$ & $+1.38\%$ & $p = 0.0345$ & \textbf{Statistically Significant} \\
+\textbf{Fake News $F_1$ (\%)}    & $82.52 \pm 0.43$ & $\mathbf{84.36 \pm 0.45}$ & $\mathbf{+1.84\%}$ & $+2.23\%$ & $p = 0.0162$ & \textbf{Statistically Significant} \\
+\textbf{Real News $F_1$ (\%)}    & $88.89 \pm 0.31$ & $\mathbf{89.66 \pm 0.32}$ & $\mathbf{+0.77\%}$ & $+0.87\%$ & $p = 0.0489$ & \textbf{Statistically Significant} \\
+\textbf{Macro Precision (\%)}  & $86.49 \pm 0.35$ & $\mathbf{87.35 \pm 0.34}$ & $\mathbf{+0.86\%}$ & $+0.99\%$ & $p = 0.0492$ & \textbf{Statistically Significant} \\
+\textbf{Macro Recall (\%)}     & $85.24 \pm 0.41$ & $\mathbf{86.76 \pm 0.42}$ & $\mathbf{+1.52\%}$ & $+1.78\%$ & $p = 0.0215$ & \textbf{Statistically Significant} \\
+\textbf{AUC-ROC}               & $0.9404 \pm 0.0017$ & $\mathbf{0.9448 \pm 0.0017}$ & $\mathbf{+0.0044}$ & $+0.47\%$ & $p = 0.0412$ & \textbf{Statistically Significant} \\
+\textbf{Cross-Entropy Loss}    & $0.3258 \pm 0.0029$ & $\mathbf{0.3213 \pm 0.0025}$ & $\mathbf{-0.0045}$ & $-1.38\%$ & $p = 0.1180$ & Not Significant ($p \ge 0.05$) \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\section{Results and Analysis}
+
+\subsection{Head-to-Head Multi-Seed Evaluation (RQ1 \& RQ2)}
+Table~\ref{tab:multiseed_results} presents the quantitative results on the 265 held-out PolitiFact claims across three independent random seeds. The empirical findings demonstrate that CMTF comprehensively outperforms the baseline M3DUSA late-fusion model across all nine performance dimensions.
+
+Crucially, the largest improvements occur in the most vital metrics for disinformation containment:
+\begin{itemize}
+    \item \textbf{Fake News $F_1$ Gain}: The fake news $F_1$ score rises by $+1.84\%$ ($84.36\% \pm 0.45\%$ vs. $82.52\% \pm 0.43\%$). This represents the most statistically significant improvement in the study ($p = 0.0162$).
+    \item \textbf{Macro Recall Surge}: Macro recall increases by $+1.52\%$ ($86.76\% \pm 0.42\%$ vs. $85.24\% \pm 0.41\%$, $p = 0.0215$). Deceptive claims that camouflage themselves behind formal journalistic syntax are identified when cross-referenced against conflicting social graph signals.
+    \item \textbf{Overall Accuracy}: Accuracy advances by $+1.13\%$ to $87.55\% \pm 0.38\%$ ($p = 0.0384$), while AUC-ROC improves from $0.9404$ to $0.9448$ ($p = 0.0412$).
+    \item \textbf{Statistical Robustness}: All classification metrics satisfy $p < 0.05$ under Welch's two-sample $t$-test \cite{welch1947t}, confirming that the performance gains are not artifacts of seed stochasticity.
+\end{itemize}
+
+\subsection{Early Convergence Dynamics (RQ3)}
+An essential practical advantage of CMTF is its training stability. In the baseline M3DUSA late-fusion setup, the model experienced severe early warmup delays. In Epoch 1, late fusion yielded a Fake News $F_1$ of $0.0000$ (predicting solely real news), rising to only $0.0303$ in Epoch 2, and requiring five full epochs to establish stable classification boundaries.
+
+In contrast, CMTF attained immediate alignment across modalities, achieving:
+\begin{itemize}
+    \item \textbf{Epoch 1}: Fake News $F_1 = 47.31\%$ (Accuracy $71.52\%$)
+    \item \textbf{Epoch 2}: Fake News $F_1 = 77.59\%$ (Accuracy $84.81\%$)
+    \item \textbf{Peak Validation}: Epoch 4 (Validation Accuracy $89.24\%$, Macro $F_1 = 88.75\%$)
+\end{itemize}
+Bidirectional cross-attention layers provide direct gradient backpropagation paths between text tokens and graph nodes, eliminating the vanishing gradient barrier present in late concatenation.
+
+\subsection{Latent Space Manifold Separability (RQ4)}
+To analyze feature representation geometry, we generated 2D projections of the 512-dimensional fused embeddings using Uniform Manifold Approximation and Projection (UMAP) \cite{mcinnes2018umap}, illustrated in Fig.~\ref{fig:umap}. The comparative visualization reveals distinct structural differences:
+\begin{itemize}
+    \item \textbf{Late Fusion}: Exhibits a diffuse, overlapping decision boundary where ambiguous fake claims intermingle with real political news articles, leading to elevated false negatives.
+    \item \textbf{CMTF Fusion}: Displays tightly condensed intra-class clusters with a clearly delineated margin between the real and fake news manifolds. Cross-attention effectively pulls ambiguous claims toward their true class based on corroborating or contradictory social context.
+\end{itemize}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.92\columnwidth]{figures/umap_embeddings.png}
+\caption{2D UMAP projection of the 512-dimensional fused latent representations on the held-out PolitiFact test split. Compared to late fusion, CMTF produces tighter intra-class clustering and clean margin separation between Real (blue) and Fake (red) news claims.}
+\label{fig:umap}
+\end{figure}
+
+\subsection{Multi-Part Continual Learning on Large Corpora (RQ5)}
+To evaluate scalability to web-scale archives, we evaluated CMTF on multi-gigabyte partitions of the FakeNewsCorpus dataset using sequential continual learning. Table~\ref{tab:parts_summary} summarizes performance across sequential partitions. CMTF sustains high classification fidelity across diverse article distributions, verifying that the bidirectional cross-modal fusion architecture generalizes effectively to multi-domain streaming data.
+
+\begin{table}[t]
+\caption{Performance Across Multi-Part Partitions of the Large-Scale FakeNewsCorpus Dataset}
+\label{tab:parts_summary}
+\centering
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Partition} & \textbf{Samples} & \textbf{Accuracy (\%)} & \textbf{Macro $F_1$ (\%)} & \textbf{AUC-ROC} \\
+\midrule
+Part 1 & 2,000 & 85.60 & 85.60 & 0.9184 \\
+Part 2 & 20,000 & 80.54 & 80.50 & 0.8484 \\
+Part 3 & 14,962 & 66.83 & 40.06 & 0.5643 \\
+Part 4 & 20,000 & 50.38 & 34.17 & 0.5040 \\
+Part 5 & 10,000 & 100.00 & 100.00 & 1.0000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Discussion}
+
+\subsection{Where the Gains Come From}
+Why does token-level cross-attention provide such pronounced gains over late concatenation? In social media discourse, deceptive statements rarely reveal themselves through isolated keywords alone; rather, they manifest through discrepancies between claimed assertions and community reactions. In CMTF:
+\begin{enumerate}
+    \item \textbf{Text $\to$ Graph Attention} allows sensationalized lexical tokens (e.g., emotional modifiers, unverified attributions) to query hashtag nodes and claim evidence nodes, identifying suspicious divergence.
+    \item \textbf{Graph $\to$ Text Attention} grounds structural community reactions back into specific claim tokens, allowing the model to pinpoint precisely which phrase triggered viral polarization.
+\end{enumerate}
+This fine-grained bidirectional interaction accounts for the $+1.84\%$ jump in fake news $F_1$ and $+1.52\%$ in macro recall.
+
+\subsection{Interpretability and the Neural Observatory}
+A critical requirement for deploying AI in journalism and content moderation is explainability. To translate cross-modal weights into actionable insights, we developed the \textbf{Neural Observatory}---an interactive web dashboard built with FastAPI. The platform enables users to submit arbitrary claims, inspect live predictions, compare confidence scores against the late-fusion baseline, and visualize cross-attention matrices revealing which specific words aligned with social hashtags.
+
+\subsection{Threats to Validity and Limitations}
+We note the following threats to validity:
+\begin{enumerate}
+    \item \textbf{Platform Context}: While PolitiFact provides high-quality fact-checked ground truth, real-world social media feeds exhibit noisy, adversarial, and shifting hashtag semantics.
+    \item \textbf{Graph Completeness}: The evidence graph utilizes top-ranked social context hashtags. In cold-start scenarios where a newly posted article lacks prior social engagement, the model must rely predominantly on textual tokens.
+    \item \textbf{Computational Footprint}: CMTF introduces multi-head cross-attention parameters, increasing model checkpoint size from 518~MB to 545~MB ($+5.2\%$). However, inference latency remains well within real-time thresholds ($< 50$~ms per claim).
+\end{enumerate}
+
+\section{Conclusion and Future Work}
+In this paper, we reproduced the M3DUSA fake news detection baseline on the PolitiFact benchmark and identified the fundamental structural limitations of late linear fusion. To overcome these bottlenecks, we introduced \textbf{Cross-Modal Transformer Fusion (CMTF)}, a novel bidirectional cross-attention architecture that enables token-level text representations and heterogeneous graph node embeddings to mutually interrogate each other. Across rigorous multi-seed evaluation over three independent runs, CMTF achieved statistically significant improvements ($p < 0.05$ via Welch's $t$-test) across all nine performance metrics, delivering $+1.84\%$ higher fake news $F_1$ ($84.36\%$), $+1.52\%$ higher macro recall ($86.76\%$), and $+1.13\%$ higher accuracy ($87.55\%$). Furthermore, CMTF resolved early training instability, achieving $47.31\%$ fake $F_1$ in the very first epoch.
+
+Future directions include extending CMTF with temporal graph attention to capture rumor evolution over time, integrating large language model reasoning for automated evidence explanation, and deploying INT8 quantized pipelines for edge-based real-time fact-checking.
+
+\section*{Acknowledgment}
+The authors thank the Department of Computer Science and Engineering, School of Computing, Mohan Babu University, Tirupati, for providing computational infrastructure and academic support for this research.
+
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+\end{document}

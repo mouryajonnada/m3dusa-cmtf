@@ -839,10 +839,10 @@ textarea#claim-input::placeholder {
     white-space: nowrap;
 }
 
-/* ── Model Row (Comparison Cards) ── */
+/* ── Model Row (Production CMTF Card) ── */
 .model-row {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
     gap: 22px;
 }
 

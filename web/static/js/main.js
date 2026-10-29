@@ -307,9 +307,7 @@ function setupEventListeners() {
     if (copyVerdict) {
         copyVerdict.addEventListener("click", () => {
             if (!lastResults) return;
-            const { baseline, cmtf, input_text, agreement, hashtags, tokens_attention } = lastResults;
-            const bStr = baseline ? `${baseline.prediction} (${baseline.confidence}%)` : "N/A";
-            const cStr = cmtf ? `${cmtf.prediction} (${cmtf.confidence}%)` : "N/A";
+            const { cmtf, input_text, hashtags, tokens_attention } = lastResults;
             const tags = hashtags && hashtags.length > 0 ? hashtags.map(h => "#" + h).join(" ") : "None";
 
             let cues = "None";
@@ -319,15 +317,14 @@ function setupEventListeners() {
             }
 
             const report =
-`🔬 M3DUSA · CMTF Multimodal Verification Diagnosis
+`🔬 CMTF Multimodal Verification Diagnosis
 ────────────────────────────────────────────────────
 Claim Statement: "${input_text}"
-Baseline M3DUSA:  ${bStr} (Late Fusion)
-Novel CMTF:       ${cStr} (Cross-Modal Transformer)
-Model Agreement:  ${agreement ? "Concordant Consensus" : "Cross-Modal Divergence (CMTF Overrode Baseline)"}
+Production CMTF:  ${cmtf ? `${cmtf.prediction} (${cmtf.confidence}%)` : "N/A"} (Cross-Modal Transformer)
+Verdict:          ${cmtf ? cmtf.prediction : "N/A"}
 Discourse Anchors: ${tags}
 Salient Cues:     ${cues}
-Evaluated Split:  PolitiFact Test Set (N=265 claims)
+Production Model: CMTF stream-trained on FakeNewsCorpus (5.4M articles)
 ────────────────────────────────────────────────────`;
 
             navigator.clipboard.writeText(report).then(() => {
@@ -467,39 +464,30 @@ async function runAnalysis(text) {
    ============================================================ */
 
 function renderResults(data) {
-    const { baseline, cmtf, agreement, hashtags, graph_stats, tokens_attention } = data;
+    const { cmtf, hashtags, graph_stats, tokens_attention } = data;
 
-    // ── Agreement Banner ──
+    // ── Verdict Banner (Production CMTF) ──
     const strip       = document.getElementById("agreement-banner");
     const dot         = document.getElementById("agreement-icon");
     const title       = document.getElementById("agreement-title");
     const desc        = document.getElementById("agreement-desc");
     const copyVerdict = document.getElementById("btn-copy-verdict");
 
+    const isReal = cmtf && cmtf.prediction === "REAL";
+
     if (strip) {
-        strip.className = "agreement-strip " + (agreement ? "agree" : "disagree");
+        strip.className = "agreement-strip " + (isReal ? "agree" : "disagree");
     }
 
     if (copyVerdict) copyVerdict.style.display = "inline-flex";
 
-    if (agreement) {
-        const verdict = cmtf ? cmtf.prediction : (baseline ? baseline.prediction : "REAL");
-        if (dot)   dot.textContent   = "✓";
-        if (title) title.textContent = `Model Consensus: Both predict ${verdict}`;
+    if (cmtf) {
+        if (dot)   dot.textContent   = isReal ? "✓" : "!";
+        if (title) title.textContent = `Verdict: ${cmtf.prediction}`;
         if (desc) {
-            const confDelta = Math.abs((cmtf ? cmtf.confidence : 0) - (baseline ? baseline.confidence : 0)).toFixed(1);
-            desc.textContent = `Baseline M3DUSA and novel CMTF concordantly classify this statement as ${verdict} (CMTF confidence margin: +${confDelta}%).`;
-        }
-    } else {
-        if (dot)   dot.textContent   = "!";
-        if (title) title.textContent = "Architecture Divergence Detected";
-        if (desc) {
-            desc.textContent = `Baseline → ${baseline.prediction} (${baseline.confidence.toFixed(1)}%) vs. CMTF → ${cmtf.prediction} (${cmtf.confidence.toFixed(1)}%). Bidirectional cross-modal attention exposed deceptive markers missed by static late fusion.`;
+            desc.textContent = `Production CMTF classifies this statement as ${cmtf.prediction} with ${cmtf.confidence.toFixed(1)}% confidence.`;
         }
     }
-
-    // ── Baseline Card ──
-    if (baseline) updateModelCard("base", baseline);
 
     // ── CMTF Card ──
     if (cmtf) updateModelCard("cmtf", cmtf);

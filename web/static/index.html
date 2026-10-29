@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>M3DUSA · CMTF — Multimodal Fake News Detection Lab</title>
-    <meta name="description" content="Interactive research dashboard for dual-model fake news detection: Baseline M3DUSA vs. novel Cross-Modal Transformer Fusion (CMTF). Evaluated on PolitiFact with multi-seed convergence.">
+    <meta name="description" content="Interactive research dashboard for fake news detection with the production Cross-Modal Transformer Fusion (CMTF) model, stream-trained on 5.4M+ FakeNewsCorpus news articles, with Baseline M3DUSA reference.">
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -104,9 +104,9 @@
             <div class="sidebar-footer">
                 <div class="status-chip">
                     <span class="status-pulse"></span>
-                    <span class="status-label">Dual-Model Online</span>
+                    <span class="status-label">CMTF Production Online</span>
                 </div>
-                <div class="version-tag">PolitiFact 265 · 3 Seeds Evaluated</div>
+                <div class="version-tag">FakeNewsCorpus 5.4M · Stream-Trained</div>
             </div>
         </aside>
 
@@ -121,7 +121,7 @@
                     <div>
                         <div class="view-pill-tag">Neural Verification Lab</div>
                         <h1 class="view-title">Live Claim Inspector</h1>
-                        <p class="view-sub">Real-time inference and token cross-attention diagnosis: Baseline M3DUSA vs. Novel CMTF</p>
+                        <p class="view-sub">Live inference with the production CMTF model — stream-trained on 5.4M+ FakeNewsCorpus news articles (best val F1 95.20%)</p>
                     </div>
                     <div class="header-badge">
                         <span class="badge-dot"></span>
@@ -188,67 +188,19 @@
                         <div class="agreement-dot" id="agreement-icon">ℹ</div>
                         <div class="agreement-info">
                             <div class="agreement-title" id="agreement-title">Awaiting verification query…</div>
-                            <div class="agreement-desc" id="agreement-desc">Select a preset sample or enter a custom claim above to trigger dual-model inference.</div>
+                            <div class="agreement-desc" id="agreement-desc">Select a preset sample or enter a custom claim above to run production CMTF inference.</div>
                         </div>
                         <div class="agreement-actions">
                             <button class="btn btn-ghost btn-sm" id="btn-copy-verdict" title="Copy full diagnosis summary to clipboard" style="display:none;">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                                 <span>Copy Diagnosis</span>
                             </button>
-                            <div class="agreement-models-badge">M3DUSA · CMTF</div>
+                            <div class="agreement-models-badge">CMTF · Production</div>
                         </div>
                     </div>
 
-                    <!-- Two Model Cards (Baseline vs CMTF) -->
+                    <!-- Model Card (Production CMTF) -->
                     <div class="model-row">
-
-                        <!-- Baseline Card -->
-                        <div class="model-card baseline-card" id="card-baseline">
-                            <div class="card-glow-bg glow-base"></div>
-                            <div class="mc-header">
-                                <div class="mc-tag tag-baseline">Baseline Architecture</div>
-                                <div class="mc-ref">Martirano et al., 2025</div>
-                            </div>
-                            <h2 class="mc-name">M3DUSA Late Fusion</h2>
-                            <p class="mc-desc">RoBERTa CLS + HGT Graph-Pool → Static Linear Concatenation</p>
-
-                            <!-- Circular Gauge -->
-                            <div class="gauge-wrap">
-                                <svg class="gauge-svg" viewBox="0 0 120 120">
-                                    <circle class="gauge-track" cx="60" cy="60" r="50"/>
-                                    <circle class="gauge-fill gauge-base" id="base-gauge" cx="60" cy="60" r="50"
-                                        stroke-dasharray="0 314"
-                                        transform="rotate(-90 60 60)"/>
-                                    <text class="gauge-pct" id="base-conf-pct" x="60" y="55" text-anchor="middle">0%</text>
-                                    <text class="gauge-sub-text" id="base-conf-label" x="60" y="73" text-anchor="middle">Confidence</text>
-                                </svg>
-                                <div class="verdict-pill" id="base-verdict">
-                                    <span class="verdict-tag tag-neutral" id="base-label">IDLE</span>
-                                </div>
-                            </div>
-
-                            <!-- Probability bars -->
-                            <div class="prob-section">
-                                <div class="prob-item">
-                                    <div class="prob-meta">
-                                        <span class="prob-name"><span class="legend-dot dot-real"></span> Real Credibility</span>
-                                        <span class="prob-val" id="base-prob-real">0.0%</span>
-                                    </div>
-                                    <div class="prob-track">
-                                        <div class="prob-fill fill-real" id="base-bar-real" style="width:0%"></div>
-                                    </div>
-                                </div>
-                                <div class="prob-item">
-                                    <div class="prob-meta">
-                                        <span class="prob-name"><span class="legend-dot dot-fake"></span> Fake Deception</span>
-                                        <span class="prob-val" id="base-prob-fake">0.0%</span>
-                                    </div>
-                                    <div class="prob-track">
-                                        <div class="prob-fill fill-fake" id="base-bar-fake" style="width:0%"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
 
                         <!-- CMTF Card -->
                         <div class="model-card cmtf-card" id="card-cmtf">
@@ -576,10 +528,10 @@
                         <div class="spec-detail">256-dim projection · 2.5M params</div>
                     </div>
                     <div class="spec-card">
-                        <div class="spec-icon">📊</div>
-                        <div class="spec-label">Benchmark Split</div>
-                        <div class="spec-val">PolitiFact 1,056</div>
-                        <div class="spec-detail">60 / 15 / 25 stratified split (265 test)</div>
+                        <div class="spec-icon">🗄️</div>
+                        <div class="spec-label">Production Checkpoint</div>
+                        <div class="spec-val">FakeNewsCorpus Stream</div>
+                        <div class="spec-detail">5.4M articles · 61,440 samples · val F1 95.20%</div>
                     </div>
                 </div>
 
