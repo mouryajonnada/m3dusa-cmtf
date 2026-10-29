@@ -12,6 +12,16 @@
 \usepackage{hyperref}
 \usepackage{algorithm}
 
+\makeatletter
+\newcommand{\linebreakand}{%
+  \end{tabular}%
+  \end{@IEEEauthorhalign}%
+  \hfill\mbox{}\par\vspace{2.5ex}
+  \mbox{}\hfill\begin{@IEEEauthorhalign}%
+  \begin{tabular}[t]{c}%
+}
+\makeatother
+
 \def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
     T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
 
@@ -31,12 +41,25 @@ t79077788@gmail.com}
 \IEEEauthorblockA{\textit{Dept. of Computer Science and Engineering} \\
 \textit{School of Computing, Mohan Babu University}\\
 Tirupati, India \\
-mallelavenu@gmail.com}
+@gmail.com}
+\linebreakand
+\IEEEauthorblockN{Jonnada Manohar Mourya}
+\IEEEauthorblockA{\textit{Dept. of Computer Science and Engineering} \\
+\textit{School of Computing, Mohan Babu University}\\
+Tirupati, India \\
+mouryajonnada@gmail.com}
 \and
-\IEEEauthorblockN{Jonnada Manohar Mourya\IEEEauthorrefmark{1}, Gampala Hemanth Teja\IEEEauthorrefmark{2}, Viswandhapalli Rajesh\IEEEauthorrefmark{3}}
-\IEEEauthorblockA{\textit{Dept. of Computer Science and Engineering, School of Computing} \\
-\textit{Mohan Babu University}, Tirupati, India \\
-Email: \IEEEauthorrefmark{1}mouryajonnada@gmail.com, \IEEEauthorrefmark{2}mouryajonnada@gmail.com, \IEEEauthorrefmark{3}mouryajonnada@gmail.com}
+\IEEEauthorblockN{Gampala Hemanth Teja}
+\IEEEauthorblockA{\textit{Dept. of Computer Science and Engineering} \\
+\textit{School of Computing, Mohan Babu University}\\
+Tirupati, India \\
+mouryajonnada@gmail.com}
+\and
+\IEEEauthorblockN{Viswandhapalli Rajesh}
+\IEEEauthorblockA{\textit{Dept. of Computer Science and Engineering} \\
+\textit{School of Computing, Mohan Babu University}\\
+Tirupati, India \\
+mouryajonnada@gmail.com}
 }
 
 \maketitle
