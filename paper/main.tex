@@ -260,7 +260,7 @@ We organize our empirical investigation around five key research questions:
 \subsection{Datasets}
 \begin{itemize}
     \item \textbf{PolitiFact Benchmark}: We utilize the curated PolitiFact benchmark from FakeNewsNet \cite{shu2020fakenewsnet}, consisting of fact-checked political statements categorized into binary veracity labels (real vs. fake). The dataset is split into stratified partitions of $60\%$ training, $15\%$ validation, and $25\%$ held-out test (265 test claims).
-    \item \textbf{FakeNewsCorpus}: A large-scale corpus of news articles \cite{szigeti2018fakenewscorpus}. We evaluate both a balanced 2,000-article benchmark subset and a 60~GB 5-part split partitioned with strict RFC 4180 quotation integrity.
+    \item \textbf{FakeNewsCorpus (29~GB)}: A large-scale corpus of news articles \cite{szigeti2018fakenewscorpus}. To support open science and reproducible benchmarking, the cleaned 29~GB corpus is publicly hosted on Kaggle \cite{tabgamer2026kaggle} (\url{https://www.kaggle.com/datasets/tabgamer123/fakenews-29gb-dataset}). We evaluate both a balanced 2,000-article benchmark subset and a 5-part split partitioned with strict RFC 4180 quotation integrity.
 \end{itemize}
 
 \subsection{Implementation Details and Hyperparameters}

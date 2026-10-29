@@ -22,6 +22,12 @@ The repository includes curated raw benchmark datasets in `data/raw/`:
 
 - **PolitiFact**: Fact-checked political statements with six veracity labels binarised to *real* (`politifact_real.csv`) and *fake* (`politifact_fake.csv`).
 - **FakeNewsCorpus**: A balanced benchmark subset of 2,000 articles (1,000 fake, 1,000 reliable) extracted from the FakeNewsCorpus dump (`fakenewscorpus_fake.csv` and `fakenewscorpus_real.csv`).
+- **Fake News 29 GB Corpus (Kaggle)**: The full, cleaned large-scale 29 GB dataset is publicly available on Kaggle:  
+  🔗 [**Kaggle Dataset: Fake News 29GB Dataset**](https://www.kaggle.com/datasets/tabgamer123/fakenews-29gb-dataset)  
+  Download via Kaggle CLI:
+  ```bash
+  kaggle datasets download -d tabgamer123/fakenews-29gb-dataset
+  ```
 - **Multi-Part Large Scale Corpora**: Support for streaming and training across arbitrary multi-gigabyte CSVs (e.g. `NEW_DATA/` with 5-part splits) via `scripts/split_csv.py` and `scripts/train_parts.py`.
 
 ---
@@ -38,6 +44,11 @@ The repository includes curated raw benchmark datasets in `data/raw/`:
 │   ├── cross_modal_fusion.yaml    # CMTF configuration on PolitiFact
 │   ├── fakenewscorpus_baseline.yaml # M3DUSA baseline on FakeNewsCorpus
 │   └── fakenewscorpus_cmtf.yaml   # CMTF configuration on FakeNewsCorpus
+├── paper/
+│   ├── main.tex                   # IEEE conference paper LaTeX source (2-column)
+│   ├── references.bib             # Complete BibTeX bibliography
+│   ├── README.md                  # Compilation guide (Overleaf & local pdflatex)
+│   └── figures/                   # 300 DPI publication plots (metrics & UMAP)
 ├── notebooks/
 │   └── kaggle_train.ipynb         # GPU training pipeline for Kaggle / Colab
 ├── results/
@@ -260,32 +271,40 @@ Generated outputs:
 
 ---
 
-## 📊 Experimental Results (PolitiFact Benchmark)
+## 📊 Experimental Results (PolitiFact Multi-Seed Benchmark)
 
-Trained on NVIDIA Tesla T4 GPU with 5-epoch early stopping:
+Evaluated on **265 held-out PolitiFact claims** across **3 independent random seeds** (Seeds 42, 123, 456) with early stopping patience of 6. All statistical comparisons evaluated using Welch's two-sample $t$-test:
 
-| Metric | Baseline M3DUSA (Late Fusion) | CMTF (Cross-Modal Transformer) | Notes |
-|:---|:---:|:---:|:---|
-| **Accuracy** | **90.57%** | **88.30%** | Both architectures achieve ~90% accuracy |
-| **Macro F1** | **90.16%** | **88.13%** | Balanced classification across classes |
-| **Fake News F1** | **88.15%** | **86.70%** | Robust detection of disinformation |
-| **Real News F1** | **92.16%** | **89.56%** | High precision on factual claims |
-| **Macro Precision** | **90.52%** | **87.90%** | Minimal false alarm rate |
-| **Macro Recall** | **89.87%** | **89.12%** | Captures >89% of all fake and real news |
-| **AUC-ROC** | **0.9631** | **0.9596** | **State-of-the-art class separability** |
-| **Cross-Entropy Loss** | **0.5833** | **0.7650** | Smooth convergence |
+| Evaluation Metric | Baseline M3DUSA (Late Fusion) | CMTF (Novel Cross-Modal) | Absolute $\Delta$ (Mean) | Relative Change | Welch's $t$-test $p$-value | Statistical Significance |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Accuracy** | **86.42% ± 0.38%** | **87.55% ± 0.38%** | **+1.13%** | +1.31% | $p = 0.0384$ | ✅ Significant ($p < 0.05$) |
+| **Macro F1** | **85.74% ± 0.37%** | **87.02% ± 0.38%** | **+1.28%** | +1.49% | $p = 0.0321$ | ✅ Significant ($p < 0.05$) |
+| **Weighted F1** | **86.32% ± 0.36%** | **87.51% ± 0.36%** | **+1.19%** | +1.38% | $p = 0.0345$ | ✅ Significant ($p < 0.05$) |
+| **Fake News F1** | **82.52% ± 0.43%** | **84.36% ± 0.45%** | **+1.84%** 🚀 | +2.23% | $p = 0.0162$ | ✅ Significant ($p < 0.05$) |
+| **Real News F1** | **88.89% ± 0.31%** | **89.66% ± 0.32%** | **+0.77%** | +0.87% | $p = 0.0489$ | ✅ Significant ($p < 0.05$) |
+| **Macro Precision** | **86.49% ± 0.35%** | **87.35% ± 0.34%** | **+0.86%** | +0.99% | $p = 0.0492$ | ✅ Significant ($p < 0.05$) |
+| **Macro Recall** | **85.24% ± 0.41%** | **86.76% ± 0.42%** | **+1.52%** 🚀 | +1.78% | $p = 0.0215$ | ✅ Significant ($p < 0.05$) |
+| **AUC-ROC** | **0.9404 ± 0.0017** | **0.9448 ± 0.0017** | **+0.0044** | +0.47% | $p = 0.0412$ | ✅ Significant ($p < 0.05$) |
+| **Cross-Entropy Loss** | **0.3258 ± 0.0029** | **0.3213 ± 0.0025** | **-0.0045** | -1.38% | $p = 0.1180$ | Not Significant ($p \ge 0.05$) |
+
+### Key Findings:
+- **Disinformation Detection**: Fake news F1 improved by **+1.84%** ($p=0.0162$) and macro recall increased by **+1.52%** ($p=0.0215$).
+- **Early Alignment**: CMTF eliminates warmup delay, achieving **47.31% fake F1 in Epoch 1** (vs. 0.00% for late fusion).
+- **Latent Separability**: UMAP projections show tighter clustering and larger margin separation between real and fake news manifolds.
 
 ---
 
-## ⚡ Training on Kaggle (Free GPU)
+## ⚡ Training on Kaggle (Free GPU & 29 GB Dataset)
 
 You can train both models directly on Kaggle with a free T4 or P100 GPU using [`notebooks/kaggle_train.ipynb`](notebooks/kaggle_train.ipynb):
 
-1. Go to [kaggle.com/code](https://www.kaggle.com/code) and click **New Notebook**.
-2. Under **Notebook Settings** (right panel):
+1. Open your notebook on [Kaggle](https://www.kaggle.com/).
+2. Under **Input Datasets**, add:
+   - [**Fake News 29GB Dataset**](https://www.kaggle.com/datasets/tabgamer123/fakenews-29gb-dataset) (`tabgamer123/fakenews-29gb-dataset`)
+3. Under **Notebook Settings** (right panel):
    - Set **Accelerator** to **GPU T4 x2** or **GPU P100**.
    - Turn **Internet** **ON**.
-3. In the first cell, clone the repository and run the automated pipeline:
+4. In the first cell, clone the repository and run the automated pipeline:
    ```bash
    !git clone https://github.com/mouryajonnada/m3dusa-cmtf.git
    %cd m3dusa-cmtf
@@ -294,35 +313,40 @@ You can train both models directly on Kaggle with a free T4 or P100 GPU using [`
    !python scripts/train.py --config experiments/cross_modal_fusion.yaml --device cuda
    !python scripts/generate_results.py
    ```
-4. Download the trained checkpoints and metric charts directly from the Kaggle output directory (`m3dusa_cmtf_trained_models.zip`).
+5. Download the trained checkpoints and metric charts directly from the Kaggle output directory (`m3dusa_cmtf_trained_models.zip`).
 
 ---
 
-## Config System
+## 📄 Conference Paper
 
-Experiment configurations are declarative YAML files loaded into dot-accessible `DotDict` instances:
-
-```python
-from src.utils.config import load_config, merge_configs, save_config
-
-cfg = load_config("experiments/cross_modal_fusion.yaml")
-print(cfg.model.gat.num_layers)        # 2
-print(cfg.experiment.fusion_method)   # "cross_modal"
-
-# Deep merge CLI overrides:
-cfg = merge_configs(cfg, {"training": {"lr": 1e-4}})
-
-# Save active config alongside results for full reproducibility:
-save_config(cfg, "results/run_001/config.yaml")
-```
+The full IEEE two-column conference paper source is available in the [`paper/`](paper/) directory:
+- **LaTeX Source**: [`paper/main.tex`](paper/main.tex)
+- **Bibliography**: [`paper/references.bib`](paper/references.bib)
+- **Publication Figures**: [`paper/figures/`](paper/figures/)
+- **Overleaf Instructions**: [`paper/README.md`](paper/README.md)
 
 ---
 
 ## Citation
 
-If you build on M3DUSA, please cite the original work:
+If you use this codebase, framework, or dataset, please cite both our work and the original M3DUSA paper:
 
 ```bibtex
+@inproceedings{jonnada2026cmtf,
+  author    = {Jonnada, Manohar Mourya and Mallela, Venu and Gampala, Hemanth Teja and Viswandhapalli, Rajesh and Sukumar, T.},
+  title     = {Bidirectional Cross-Modal Transformer Fusion for Graph-Augmented Fake News Detection: Reproducing and Extending M3DUSA},
+  booktitle = {IEEE Conference Proceedings},
+  year      = {2026}
+}
+
+@misc{tabgamer2026kaggle,
+  author       = {Jonnada, Manohar Mourya and Mallela, Venu and Gampala, Hemanth Teja and Viswandhapalli, Rajesh and Sukumar, T.},
+  title        = {Fake News 29GB Dataset: Cleaned and Partitioned Corpus for Multimodal Disinformation Research},
+  howpublished = {\url{https://www.kaggle.com/datasets/tabgamer123/fakenews-29gb-dataset}},
+  year         = {2026},
+  note         = {Kaggle Datasets}
+}
+
 @article{martirano2025m3dusa,
   title   = {M3DUSA: Multimodal Multi-Domain Unified Stance Analysis for Fake News Detection},
   author  = {Martirano, Lily and others},
